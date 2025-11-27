@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
-      - cursor/build-web-messaging-app-from-scratch-gpt-5.1-codex-789c
+    paths:
+      - '.github/workflows/deploy-pages.yml'
+      - 'web-client/**'
+  pull_request:
+    branches:
+      - main
     paths:
       - '.github/workflows/deploy-pages.yml'
       - 'web-client/**'
@@ -16,7 +21,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.pull_request.number) || 'pages-prod' }}
   cancel-in-progress: true
 
 jobs:
@@ -48,7 +53,23 @@ jobs:
         with:
           path: web-client/dist
 
-  deploy:
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: preview/pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy preview to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          preview: true
+          preview_id: pr-${{ github.event.pull_request.number }}
+
+  deploy-prod:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     if: |
