@@ -43,9 +43,18 @@ npm run preview    # serve il build prodotto localmente
 
 ## Deploy su GitHub Pages (static hosting)
 
-1. Esegui `npm run build` nel repository.
-2. Copia il contenuto di `dist/` su un branch/hosting Pages oppure automatizza con GitHub Actions.
-3. L'app non necessita di backend: basta servire i file statici.
+Il workflow [`deploy-pages.yml`](../.github/workflows/deploy-pages.yml) automatizza build e pubblicazione della cartella `web-client/dist/`.
+
+1. In GitHub vai su **Settings → Pages** e imposta **Source = GitHub Actions** (richiesto solo la prima volta).
+2. Ogni push su `main` (o su questo branch di lavoro) che tocca `web-client/**` fa partire il workflow:
+   - checkout repo
+   - `npm ci --prefix web-client`
+   - `npm run build --prefix web-client`
+   - upload dell'artefatto e deploy con `actions/deploy-pages`.
+3. Puoi anche eseguirlo manualmente via **Actions → Deploy web client to GitHub Pages → Run workflow**.
+4. L'URL finale appare nell'output del job `deploy`. L'app è puramente statica, quindi non richiede ulteriori servizi.
+
+Se preferisci un deploy manuale resta valido il vecchio approccio: `npm run build` e pubblicazione dei file presenti in `web-client/dist/`.
 
 ## Prossimi passi possibili
 
