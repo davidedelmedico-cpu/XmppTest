@@ -17,10 +17,17 @@ function RedirectHandler() {
     
     if (redirectPath) {
       // Replace ~and~ with & in the path
-      const path = redirectPath.replace(/~and~/g, '&')
-      navigate(path, { replace: true })
+      let path = redirectPath.replace(/~and~/g, '&')
+      // Ensure path starts with /
+      if (!path.startsWith('/')) {
+        path = '/' + path
+      }
+      // Only navigate if the path is different from current location
+      if (location.pathname !== path) {
+        navigate(path, { replace: true })
+      }
     }
-  }, [location.search, navigate])
+  }, [location.search, location.pathname, navigate])
 
   return null
 }

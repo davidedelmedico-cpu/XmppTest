@@ -24,13 +24,29 @@
       var segmentCount = 1;
 
       var l = window.location;
-      l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash
-      );
+      var pathSegments = l.pathname.split('/').filter(function(segment) {
+        return segment !== '';
+      });
+      
+      // Build base path (e.g., /XmppTest)
+      var basePath = '/' + pathSegments.slice(0, segmentCount).join('/');
+      
+      // If we're at the base path or a sub-route, redirect appropriately
+      if (pathSegments.length <= segmentCount) {
+        // At base path, redirect to index with empty route
+        l.replace(basePath + '/?/');
+      } else {
+        // At a sub-route, redirect with the route path
+        var redirectPath = pathSegments.slice(segmentCount).join('/').replace(/&/g, '~and~');
+        var newUrl = basePath + '/?/' + redirectPath;
+        if (l.search) {
+          newUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
+        }
+        if (l.hash) {
+          newUrl += l.hash;
+        }
+        l.replace(newUrl);
+      }
 
     </script>
   </head>
