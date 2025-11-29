@@ -1,72 +1,27 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { LoginPage } from './pages/LoginPage'
 import { ConversationsPage } from './pages/ConversationsPage'
 import './App.css'
 
-// Redirect logic for GitHub Pages SPA routing
+// Redirect logic for GitHub Pages SPA routing (fallback)
+// Most redirects are handled in main.tsx before React mounts,
+// but this ensures URL stays clean after React Router navigation
 function RedirectHandler() {
   const location = useLocation()
-  const navigate = useNavigate()
-  const hasRedirected = useRef(false)
 
   useEffect(() => {
-    // Check if we have a redirect query parameter (from 404.html)
-    // The 404.html creates URLs like /?/XmppTest/conversations
-    const windowSearch = window.location.search
-    
-    // Check if window.location.search starts with ?/ (direct check)
-    if (windowSearch.startsWith('?/') && !hasRedirected.current) {
-      hasRedirected.current = true
-      
-      // Extract path directly from window.location.search
-      let path = windowSearch.substring(2) // Remove '?/'
-      
-      // Handle additional query parameters (if any) - split on & but preserve ~and~
-      const queryIndex = path.indexOf('&')
-      if (queryIndex !== -1) {
-        // Check if it's a real & or a ~and~
-        const beforeQuery = path.substring(0, queryIndex)
-        if (!beforeQuery.includes('~and~')) {
-          // It's a real query parameter, stop here
-          path = beforeQuery
-        }
-      }
-      
-      // Replace ~and~ with & in the path (for paths that had & encoded)
-      path = path.replace(/~and~/g, '&')
-      
-      // Remove leading/trailing slashes and normalize
-      path = path.replace(/^\/+|\/+$/g, '')
-      
-      // Remove the basePath (XmppTest) from the path since basename handles it
-      if (path.startsWith('XmppTest')) {
-        path = path.substring('XmppTest'.length)
-        // Remove leading slash if present
-        path = path.replace(/^\/+/, '')
-      }
-      
-      // Build target path: empty string for root, or /path for sub-routes
-      const targetPath = path === '' ? '/' : '/' + path
-      
-      // Build the full clean URL with basePath
+    // Ensure URL stays clean - remove any query params that might have been added
+    if (window.location.search && (location.pathname === '/' || location.pathname === '/conversations')) {
       const basePath = '/XmppTest'
-      const cleanUrl = basePath + targetPath
-      
-      // First, clean up the URL in the browser (remove query params)
-      window.history.replaceState(null, '', cleanUrl)
-      
-      // Then navigate with React Router to update the internal state
-      // This ensures React Router is in sync with the clean URL
-      navigate(targetPath, { replace: true })
+      const cleanUrl = basePath + location.pathname
+      // Only replace if URL is different
+      if (window.location.pathname + window.location.search !== cleanUrl) {
+        window.history.replaceState(null, '', cleanUrl)
+      }
     }
-    
-    // Reset the flag when search params are cleared
-    if (!windowSearch) {
-      hasRedirected.current = false
-    }
-  }, [location.pathname, location.search, navigate])
+  }, [location.pathname])
 
   return null
 }
