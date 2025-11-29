@@ -12,38 +12,54 @@ export type XmppConnectionSettings = {
 
 /**
  * Discovers WebSocket URL from domain using XEP-0156 (host-meta discovery)
- * Falls back to standard port 5281 with /xmpp-websocket path if discovery fails
+ * Throws an error if discovery fails - no automatic fallback
  */
 const discoverWebSocketUrl = async (domain: string): Promise<string> => {
-  // Try XEP-0156 discovery via .well-known/host-meta
+  const hostMetaUrl = `https://${domain}/.well-known/host-meta`
+  
+  let response: Response
   try {
-    const hostMetaUrl = `https://${domain}/.well-known/host-meta`
-    const response = await fetch(hostMetaUrl, {
+    response = await fetch(hostMetaUrl, {
       method: 'GET',
       headers: { Accept: 'application/xrd+xml, application/xml, text/xml' },
     })
-
-    if (response.ok) {
-      const text = await response.text()
-      // Parse XRD XML to find WebSocket link
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(text, 'text/xml')
-      const links = doc.querySelectorAll('Link[rel="urn:xmpp:alt-connections:websocket"]')
-      
-      if (links.length > 0) {
-        const href = links[0].getAttribute('href')
-        if (href) {
-          return href
-        }
-      }
-    }
   } catch (error) {
-    // Discovery failed, fall through to default
-    console.debug('host-meta discovery failed, using default WebSocket URL', error)
+    throw new Error(
+      `Impossibile raggiungere il server per l'auto-discovery: ${hostMetaUrl}. ` +
+      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
+    )
   }
 
-  // Fallback to standard WebSocket URL (port 5281, path /xmpp-websocket)
-  return `wss://${domain}:5281/xmpp-websocket`
+  if (!response.ok) {
+    throw new Error(
+      `Il server non fornisce informazioni di discovery (${response.status}). ` +
+      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
+    )
+  }
+
+  const text = await response.text()
+  
+  // Parse XRD XML to find WebSocket link
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(text, 'text/xml')
+  const links = doc.querySelectorAll('Link[rel="urn:xmpp:alt-connections:websocket"]')
+  
+  if (links.length === 0) {
+    throw new Error(
+      `Il server non espone un endpoint WebSocket tramite host-meta discovery. ` +
+      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
+    )
+  }
+
+  const href = links[0].getAttribute('href')
+  if (!href) {
+    throw new Error(
+      `L'endpoint WebSocket trovato nel host-meta è invalido. ` +
+      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
+    )
+  }
+
+  return href
 }
 
 export type XmppResult = {
