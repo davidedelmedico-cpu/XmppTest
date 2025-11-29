@@ -180,8 +180,65 @@ function App() {
       <main className="panels">
         <section className="auth-card">
           <div className="auth-card__header">
+            <h3>Accedi</h3>
+            <p>Usa un JID già esistente sullo stesso dominio.</p>
+          </div>
+          <form className="auth-form" onSubmit={handleLoginSubmit}>
+            <div className="form-grid">
+              <label className="field">
+                <span>Username</span>
+                <input
+                  autoComplete="username"
+                  value={loginForm.username}
+                  onChange={handleLoginChange('username')}
+                />
+              </label>
+              <label className="field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={loginForm.password}
+                  onChange={handleLoginChange('password')}
+                />
+              </label>
+            </div>
+            <div className="actions">
+              <button type="submit" disabled={loginStatus.state === 'pending'}>
+                {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
+              </button>
+            </div>
+          </form>
+          <StatusBanner status={loginStatus} successHint="Sessione pronta: puoi passare al roster/chat." />
+        </section>
+
+        <section className="auth-card">
+          <div className="auth-card__header">
             <h3>Crea account</h3>
-            <p>Richiede che il server supporti la registrazione in-band.</p>
+            <div className="info-box" style={{ 
+              background: '#fff3cd', 
+              border: '1px solid #ffc107', 
+              borderRadius: '4px', 
+              padding: '0.75rem', 
+              marginBottom: '1rem',
+              fontSize: '0.9rem'
+            }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500' }}>
+                ℹ️ La maggior parte dei server pubblici ha disabilitato la registrazione in-band per policy anti-spam.
+              </p>
+              <p style={{ margin: '0 0 0.5rem 0' }}>
+                Per questi server è necessario registrarsi tramite i loro siti web:
+              </p>
+              <p style={{ margin: 0 }}>
+                <a href="https://account.conversations.im/register/" target="_blank" rel="noopener noreferrer" style={{ marginRight: '1rem' }}>
+                  conversations.im
+                </a>
+                <a href="https://account.trashserver.net/register/" target="_blank" rel="noopener noreferrer">
+                  trashserver.net
+                </a>
+              </p>
+            </div>
+            <p>Se il tuo server supporta la registrazione in-band (XEP-0077), usa il form qui sotto:</p>
           </div>
           <form className="auth-form" onSubmit={handleRegisterSubmit}>
             <div className="form-grid">
@@ -221,40 +278,6 @@ function App() {
             </div>
           </form>
           <StatusBanner status={registerStatus} successHint="Copiati subito il JID, ti servirà per il login." />
-        </section>
-
-        <section className="auth-card">
-          <div className="auth-card__header">
-            <h3>Accedi</h3>
-            <p>Usa un JID già esistente sullo stesso dominio.</p>
-          </div>
-          <form className="auth-form" onSubmit={handleLoginSubmit}>
-            <div className="form-grid">
-              <label className="field">
-                <span>Username</span>
-                <input
-                  autoComplete="username"
-                  value={loginForm.username}
-                  onChange={handleLoginChange('username')}
-                />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={loginForm.password}
-                  onChange={handleLoginChange('password')}
-                />
-              </label>
-            </div>
-            <div className="actions">
-              <button type="submit" disabled={loginStatus.state === 'pending'}>
-                {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
-              </button>
-            </div>
-          </form>
-          <StatusBanner status={loginStatus} successHint="Sessione pronta: puoi passare al roster/chat." />
         </section>
       </main>
 
