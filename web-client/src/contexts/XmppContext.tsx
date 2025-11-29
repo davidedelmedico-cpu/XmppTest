@@ -71,6 +71,9 @@ export function XmppProvider({ children }: { children: ReactNode }) {
             clearCredentials()
             setError(error instanceof Error ? error.message : 'Riconnessione automatica fallita')
           }
+        } else {
+          // Nessuna credenziale salvata, aspetta un attimo per mostrare lo spinner
+          await new Promise(resolve => setTimeout(resolve, 300))
         }
         // Finito il tentativo di riconnessione, mostra l'interfaccia
         setIsInitializing(false)
