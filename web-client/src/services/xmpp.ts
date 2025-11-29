@@ -25,54 +25,64 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
 
     if (response.ok) {
       const text = await response.text()
-      // Parse XRD XML to find WebSocket link
+      
+      // Try normal XML parsing first
       const parser = new DOMParser()
       const doc = parser.parseFromString(text, 'text/xml')
       
       // Check for parsing errors
       const parserError = doc.querySelector('parsererror')
-      if (parserError) {
-        console.warn('XML parsing error:', parserError.textContent)
-        // PATCH: Try regex extraction as fallback for malformed XML (e.g., trashserver.net)
+      if (!parserError) {
+        // XML is valid, parse normally
+        const allLinks = doc.getElementsByTagName('Link')
+        
+        for (let i = 0; i < allLinks.length; i++) {
+          const link = allLinks[i]
+          const rel = link.getAttribute('rel')
+          if (rel === 'urn:xmpp:alt-connections:websocket') {
+            const href = link.getAttribute('href')
+            if (href) {
+              // Clean up any extra quotes or whitespace
+              const cleanedHref = href.trim().replace(/["']+$/g, '').replace(/^["']+/g, '')
+              console.debug('Discovered WebSocket URL via XML parsing:', cleanedHref)
+              return cleanedHref
+            }
+          }
+        }
+        console.debug('No WebSocket link found in valid XML')
+      } else {
+        // XML parsing failed - try regex extraction as fallback for malformed XML
+        console.warn('XML parsing error, trying regex extraction:', parserError.textContent)
         const wsMatch = text.match(/rel=["']urn:xmpp:alt-connections:websocket["'][^>]*href=["']([^"']+)["']+/i)
         if (wsMatch && wsMatch[1]) {
           const cleanedHref = wsMatch[1].trim().replace(/["']+$/g, '').replace(/^["']+/g, '')
-          console.debug('Extracted WebSocket URL via regex fallback:', cleanedHref)
+          console.debug('Extracted WebSocket URL via regex (malformed XML):', cleanedHref)
           return cleanedHref
         }
-        throw new Error('Failed to parse host-meta XML and regex extraction failed')
+        console.debug('Regex extraction also failed for malformed XML')
       }
-      
-      // Use getElementsByTagName to avoid namespace issues with querySelector
-      const allLinks = doc.getElementsByTagName('Link')
-      
-      for (let i = 0; i < allLinks.length; i++) {
-        const link = allLinks[i]
-        const rel = link.getAttribute('rel')
-        if (rel === 'urn:xmpp:alt-connections:websocket') {
-          const href = link.getAttribute('href')
-          if (href) {
-            // PATCH: Clean up malformed XML attributes (e.g., trashserver.net has href="url"")
-            // Trim whitespace and remove extra quotes from both ends
-            const cleanedHref = href.trim().replace(/["']+$/g, '').replace(/^["']+/g, '')
-            console.debug('Discovered WebSocket URL:', cleanedHref)
-            return cleanedHref
-          }
-        }
-      }
-      console.debug('No WebSocket link found in host-meta')
     } else {
       console.debug('host-meta response not OK:', response.status)
     }
   } catch (error) {
-    // Discovery failed, fall through to default
-    console.debug('host-meta discovery failed, using fallback WebSocket URL', error)
+    // Network error or fetch failed
+    console.debug('host-meta discovery failed:', error)
   }
 
-  // Fallback to standard WebSocket URL (port 5281, path /xmpp-websocket)
-  const fallbackUrl = `wss://${domain}:5281/xmpp-websocket`
-  console.debug('Using fallback WebSocket URL:', fallbackUrl)
-  return fallbackUrl
+  // Fallback: try multiple common WebSocket patterns
+  console.debug('Using fallback WebSocket URL strategies')
+  
+  // Pattern 1: subdomain xmpp with /ws path (common for modern servers like trashserver.net)
+  const fallbackUrl1 = `wss://xmpp.${domain}/ws`
+  
+  // Pattern 2: standard port 5281 with /xmpp-websocket path
+  const fallbackUrl2 = `wss://${domain}:5281/xmpp-websocket`
+  
+  console.debug('Fallback option 1 (preferred):', fallbackUrl1)
+  console.debug('Fallback option 2:', fallbackUrl2)
+  
+  // Return first fallback - the connection attempt will determine if it works
+  return fallbackUrl1
 }
 
 export type XmppResult = {
