@@ -28,12 +28,19 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
       // Parse XRD XML to find WebSocket link
       const parser = new DOMParser()
       const doc = parser.parseFromString(text, 'text/xml')
-      const links = doc.querySelectorAll('Link[rel="urn:xmpp:alt-connections:websocket"]')
       
-      if (links.length > 0) {
-        const href = links[0].getAttribute('href')
-        if (href) {
-          return href
+      // Use getElementsByTagName to avoid namespace issues with querySelector
+      const allLinks = doc.getElementsByTagName('Link')
+      
+      for (let i = 0; i < allLinks.length; i++) {
+        const link = allLinks[i]
+        const rel = link.getAttribute('rel')
+        if (rel === 'urn:xmpp:alt-connections:websocket') {
+          const href = link.getAttribute('href')
+          if (href) {
+            // Clean up any extra quotes that might be in the XML
+            return href.replace(/^["']|["']$/g, '').trim()
+          }
         }
       }
     }
