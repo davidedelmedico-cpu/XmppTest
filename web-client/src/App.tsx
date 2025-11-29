@@ -63,6 +63,7 @@ const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string;
 }
 
 function App() {
+  const [showRegister, setShowRegister] = useState(false)
   const [registerForm, setRegisterForm] = useState({ jid: '', password: '', confirm: '' })
   const [loginForm, setLoginForm] = useState({ jid: '', password: '' })
 
@@ -186,112 +187,160 @@ function App() {
       </header>
 
       <main className="panels">
-        <section className="auth-card">
-          <div className="auth-card__header">
-            <h3>Accedi</h3>
-            <p>Inserisci il tuo username completo con il server</p>
-          </div>
-          <form className="auth-form" onSubmit={handleLoginSubmit}>
-            <div className="form-grid">
-              <label className="field">
-                <span>Username</span>
-                <input
-                  autoComplete="username"
-                  value={loginForm.jid}
-                  onChange={handleLoginChange('jid')}
-                  placeholder="mario@example.com"
-                />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={loginForm.password}
-                  onChange={handleLoginChange('password')}
-                />
-              </label>
+        {!showRegister ? (
+          <section className="auth-card">
+            <div className="auth-card__header">
+              <h3>Accedi</h3>
+              <p>Inserisci il tuo username completo con il server</p>
             </div>
-            <div className="actions">
-              <button type="submit" disabled={loginStatus.state === 'pending'}>
-                {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
-              </button>
-            </div>
-          </form>
-          <StatusBanner status={loginStatus} successHint="Accesso completato con successo!" />
-        </section>
-
-        <section className="auth-card">
-          <div className="auth-card__header">
-            <h3>Crea account</h3>
-            <div className="info-box" style={{ 
-              background: '#fff3cd', 
-              border: '1px solid #ffc107', 
-              borderRadius: '4px', 
-              padding: '0.75rem', 
-              marginBottom: '1rem',
-              fontSize: '0.9rem'
-            }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500' }}>
-                ℹ️ La maggior parte dei server pubblici richiede la registrazione tramite il loro sito web.
+            <form className="auth-form" onSubmit={handleLoginSubmit}>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Username</span>
+                  <input
+                    autoComplete="username"
+                    value={loginForm.jid}
+                    onChange={handleLoginChange('jid')}
+                    placeholder="mario@example.com"
+                  />
+                </label>
+                <label className="field">
+                  <span>Password</span>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={loginForm.password}
+                    onChange={handleLoginChange('password')}
+                  />
+                </label>
+              </div>
+              <div className="actions">
+                <button type="submit" disabled={loginStatus.state === 'pending'}>
+                  {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
+                </button>
+              </div>
+            </form>
+            <StatusBanner status={loginStatus} successHint="Accesso completato con successo!" />
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <p className="muted" style={{ margin: 0 }}>
+                Non hai un account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegister(true)
+                    setLoginStatus(initialStatus)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6cb1ff',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    font: 'inherit',
+                  }}
+                >
+                  Clicca qui per registrarti
+                </button>
               </p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                Alcuni esempi di server dove puoi registrarti:
+            </div>
+          </section>
+        ) : (
+          <section className="auth-card">
+            <div className="auth-card__header">
+              <h3>Crea account</h3>
+              <div className="info-box" style={{ 
+                background: '#fff3cd', 
+                border: '1px solid #ffc107', 
+                borderRadius: '4px', 
+                padding: '0.75rem', 
+                marginBottom: '1rem',
+                fontSize: '0.9rem'
+              }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500' }}>
+                  ℹ️ La maggior parte dei server pubblici richiede la registrazione tramite il loro sito web.
+                </p>
+                <p style={{ margin: '0 0 0.5rem 0' }}>
+                  Alcuni esempi di server dove puoi registrarti:
+                </p>
+                <ul style={{ margin: '0', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+                  <li>
+                    <a href="https://account.conversations.im/register/" target="_blank" rel="noopener noreferrer">
+                      Conversations.im
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://trashserver.net/en/register/" target="_blank" rel="noopener noreferrer">
+                      Trashserver.net
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <p>Se il tuo server lo permette, puoi registrarti direttamente qui:</p>
+            </div>
+            <form className="auth-form" onSubmit={handleRegisterSubmit}>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Username</span>
+                  <input
+                    autoComplete="username"
+                    value={registerForm.jid}
+                    onChange={handleRegisterChange('jid')}
+                    placeholder="nomeutente@example.com"
+                  />
+                </label>
+                <label className="field">
+                  <span>Password</span>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={registerForm.password}
+                    onChange={handleRegisterChange('password')}
+                    placeholder="Minimo 6 caratteri"
+                  />
+                </label>
+                <label className="field">
+                  <span>Conferma</span>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={registerForm.confirm}
+                    onChange={handleRegisterChange('confirm')}
+                  />
+                </label>
+              </div>
+              <div className="actions">
+                <button type="submit" disabled={registerStatus.state === 'pending'}>
+                  {registerStatus.state === 'pending' ? 'Attendere...' : 'Registra e collega'}
+                </button>
+              </div>
+            </form>
+            <StatusBanner status={registerStatus} successHint="Account creato! Puoi ora accedere con le tue credenziali." />
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <p className="muted" style={{ margin: 0 }}>
+                Hai già un account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegister(false)
+                    setRegisterStatus(initialStatus)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6cb1ff',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    font: 'inherit',
+                  }}
+                >
+                  Torna al login
+                </button>
               </p>
-              <ul style={{ margin: '0', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                <li>
-                  <a href="https://account.conversations.im/register/" target="_blank" rel="noopener noreferrer">
-                    Conversations.im
-                  </a>
-                </li>
-                <li>
-                  <a href="https://trashserver.net/en/register/" target="_blank" rel="noopener noreferrer">
-                    Trashserver.net
-                  </a>
-                </li>
-              </ul>
             </div>
-            <p>Se il tuo server lo permette, puoi registrarti direttamente qui:</p>
-          </div>
-          <form className="auth-form" onSubmit={handleRegisterSubmit}>
-            <div className="form-grid">
-              <label className="field">
-                <span>Username</span>
-                <input
-                  autoComplete="username"
-                  value={registerForm.jid}
-                  onChange={handleRegisterChange('jid')}
-                  placeholder="nomeutente@example.com"
-                />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={registerForm.password}
-                  onChange={handleRegisterChange('password')}
-                  placeholder="Minimo 6 caratteri"
-                />
-              </label>
-              <label className="field">
-                <span>Conferma</span>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={registerForm.confirm}
-                  onChange={handleRegisterChange('confirm')}
-                />
-              </label>
-            </div>
-            <div className="actions">
-              <button type="submit" disabled={registerStatus.state === 'pending'}>
-                {registerStatus.state === 'pending' ? 'Attendere...' : 'Registra e collega'}
-              </button>
-            </div>
-          </form>
-          <StatusBanner status={registerStatus} successHint="Account creato! Puoi ora accedere con le tue credenziali." />
-        </section>
+          </section>
+        )}
       </main>
 
       <section className="notes">
