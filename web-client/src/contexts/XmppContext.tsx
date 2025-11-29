@@ -102,9 +102,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       setJid(result.jid || jid)
 
       // Carica conversazioni dal server
-      // Prima query sempre completa (non incrementale) per avere lista completa
       const loaded = await loadConversations(result.client, {
-        incremental: false, // Sempre completa al primo login
         limit: 20, // Prime 20 conversazioni
       })
 
@@ -147,43 +145,15 @@ export function XmppProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true)
     try {
-      // Carica aggiornamenti incrementali (solo messaggi dopo lastSync)
+      // Ricarica conversazioni dal server (query completa)
       const loaded = await loadConversations(client, {
-        incremental: true, // Solo aggiornamenti dopo lastSync
+        limit: conversations.length || 20, // Mantieni stesso numero o default
       })
 
       // Arricchisci con dati roster
       const enriched = await enrichWithRoster(client, loaded.conversations)
       
-      // Merge intelligente: aggiorna conversazioni esistenti o aggiungi nuove
-      const conversationMap = new Map(conversations.map((c) => [c.jid, c]))
-      
-      for (const newConv of enriched) {
-        const existing = conversationMap.get(newConv.jid)
-        if (!existing) {
-          // Nuova conversazione
-          conversationMap.set(newConv.jid, newConv)
-        } else {
-          // Conversazione esistente: aggiorna solo se nuovo messaggio è più recente
-          const newTimestamp = newConv.lastMessage.timestamp.getTime()
-          const oldTimestamp = existing.lastMessage.timestamp.getTime()
-          
-          if (newTimestamp > oldTimestamp) {
-            // Aggiorna mantenendo unreadCount esistente
-            conversationMap.set(newConv.jid, {
-              ...newConv,
-              unreadCount: existing.unreadCount,
-            })
-          }
-        }
-      }
-      
-      // Converti in array e riordina
-      const combined = Array.from(conversationMap.values()).sort(
-        (a, b) => b.lastMessage.timestamp.getTime() - a.lastMessage.timestamp.getTime()
-      )
-      
-      setConversations(combined)
+      setConversations(enriched)
     } catch (err) {
       console.error('Errore nel refresh conversazioni:', err)
       setError(err instanceof Error ? err.message : 'Errore nel refresh')

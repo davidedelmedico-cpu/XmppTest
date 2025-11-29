@@ -1,6 +1,6 @@
 import type { Agent } from 'stanza'
 import type { MAMResult, ReceivedMessage } from 'stanza/protocol'
-import { saveConversations, updateConversation, getMetadata, saveMetadata, getConversations, type Conversation } from './conversations-db'
+import { saveConversations, updateConversation, saveMetadata, getConversations, type Conversation } from './conversations-db'
 
 // Re-export per comodità
 export type { Conversation } from './conversations-db'
@@ -162,32 +162,18 @@ export async function loadConversationsFromServer(
 }
 
 /**
- * Carica conversazioni con supporto per aggiornamenti incrementali basati su data
+ * Carica conversazioni dal server usando MAM
  */
 export async function loadConversations(
   client: Agent,
   options: {
-    incremental?: boolean // Se true, carica solo messaggi dopo lastSync
     limit?: number // Limite conversazioni da caricare
   } = {}
 ): Promise<{ conversations: Conversation[]; nextToken?: string }> {
-  const { incremental = false, limit } = options
+  const { limit } = options
 
-  let startDate: Date | undefined
-  let endDate = new Date()
-
-  if (incremental) {
-    // Carica solo messaggi dopo l'ultima sincronizzazione
-    const metadata = await getMetadata()
-    if (metadata?.lastSync) {
-      startDate = metadata.lastSync
-    }
-  }
-
-  // Carica dal server
+  // Carica dal server (sempre query completa, senza filtri temporali)
   const result = await loadConversationsFromServer(client, {
-    startDate,
-    endDate,
     maxResults: limit ? limit * 3 : 100, // Carica più messaggi per avere conversazioni complete
   })
 
@@ -196,13 +182,13 @@ export async function loadConversations(
     await saveConversations(result.conversations)
   }
 
-  // Aggiorna metadata
+  // Aggiorna metadata (solo token per paginazione, non lastSync)
   await saveMetadata({
-    lastSync: endDate,
+    lastSync: new Date(), // Manteniamo per riferimento ma non lo usiamo per filtri
     lastRSMToken: result.nextToken,
   })
 
-  // Carica dal database (per avere unreadCount corretto e merge con cache)
+  // Carica dal database (per avere unreadCount corretto)
   const allConversations = await getConversations()
 
   // Se c'è un limite, applica
