@@ -20,7 +20,6 @@ const sanitizeDomain = (value: string) => value.trim().toLowerCase()
 
 function App() {
   const [domain, setDomain] = useState(DEFAULT_XMPP_DOMAIN)
-  const [websocketUrl] = useState('') // Always empty - auto-discovery only
 
   const [registerForm, setRegisterForm] = useState({ username: '', password: '', confirm: '' })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
