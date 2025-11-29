@@ -17,6 +17,7 @@ interface XmppContextType {
   jid: string | null
   conversations: Conversation[]
   isLoading: boolean
+  isInitializing: boolean
   error: string | null
   connect: (jid: string, password: string) => Promise<void>
   disconnect: () => void
@@ -31,6 +32,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   const [jid, setJid] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const hasAttemptedReconnect = useRef(false)
 
@@ -50,9 +52,12 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   }, [isConnected])
 
   // Tentativo di riconnessione automatica all'avvio se ci sono credenziali salvate
+  // Questo viene eseguito PRIMA di mostrare qualsiasi cosa all'utente
   useEffect(() => {
-    if (!hasAttemptedReconnect.current && !isConnected && !isLoading) {
+    if (!hasAttemptedReconnect.current) {
       hasAttemptedReconnect.current = true
+      setIsInitializing(true)
+      
       const attemptAutoReconnect = async () => {
         const saved = loadCredentials()
         if (saved) {
@@ -67,7 +72,10 @@ export function XmppProvider({ children }: { children: ReactNode }) {
             setError(error instanceof Error ? error.message : 'Riconnessione automatica fallita')
           }
         }
+        // Finito il tentativo di riconnessione, mostra l'interfaccia
+        setIsInitializing(false)
       }
+      
       attemptAutoReconnect()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -204,6 +212,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         jid,
         conversations,
         isLoading,
+        isInitializing,
         error,
         connect,
         disconnect,
