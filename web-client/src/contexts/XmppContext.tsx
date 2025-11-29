@@ -32,18 +32,20 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Carica conversazioni dal database locale all'avvio
+  // Carica conversazioni dal database locale all'avvio (solo se non connesso)
   useEffect(() => {
-    const loadCachedConversations = async () => {
-      try {
-        const cached = await getConversations()
-        setConversations(cached)
-      } catch (err) {
-        console.error('Errore nel caricamento cache:', err)
+    if (!isConnected) {
+      const loadCachedConversations = async () => {
+        try {
+          const cached = await getConversations()
+          setConversations(cached)
+        } catch (err) {
+          console.error('Errore nel caricamento cache:', err)
+        }
       }
+      loadCachedConversations()
     }
-    loadCachedConversations()
-  }, [])
+  }, [isConnected])
 
   // Gestione eventi real-time quando client è connesso
   useEffect(() => {
@@ -90,16 +92,36 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         throw new Error(result.message || 'Login fallito')
       }
 
-      setClient(result.client)
+      const xmppClient = result.client
+      setClient(xmppClient)
       setIsConnected(true)
       setJid(result.jid || jid)
 
-      // Carica TUTTE le conversazioni dal server (storico completo)
-      const loaded = await loadAllConversations(result.client)
+      // Mostra SUBITO le conversazioni dalla cache locale
+      const cachedConversations = await getConversations()
+      if (cachedConversations.length > 0) {
+        // Arricchisci con dati roster dalla cache
+        const enrichedCached = await enrichWithRoster(xmppClient, cachedConversations)
+        setConversations(enrichedCached)
+      }
 
-      // Arricchisci con dati roster
-      const enriched = await enrichWithRoster(result.client, loaded)
-      setConversations(enriched)
+      // Poi in background carica e aggiorna dal server (asincrono)
+      void (async () => {
+        try {
+          setIsLoading(true)
+          // Carica TUTTE le conversazioni dal server (storico completo)
+          const loaded = await loadAllConversations(xmppClient)
+
+          // Arricchisci con dati roster
+          const enriched = await enrichWithRoster(xmppClient, loaded)
+          setConversations(enriched)
+        } catch (err) {
+          console.error('Errore nel caricamento conversazioni dal server:', err)
+          setError(err instanceof Error ? err.message : 'Errore nel caricamento')
+        } finally {
+          setIsLoading(false)
+        }
+      })()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Errore di connessione'
       setError(errorMessage)
