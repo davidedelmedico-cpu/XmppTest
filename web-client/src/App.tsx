@@ -20,6 +20,7 @@ const sanitizeDomain = (value: string) => value.trim().toLowerCase()
 
 function App() {
   const [domain, setDomain] = useState(DEFAULT_XMPP_DOMAIN)
+  const [websocketUrl, setWebsocketUrl] = useState('')
 
   const [registerForm, setRegisterForm] = useState({ username: '', password: '', confirm: '' })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -77,6 +78,7 @@ function App() {
     try {
       const result = await registerAccount({
         domain: sanitizeDomain(domain) || DEFAULT_XMPP_DOMAIN,
+        websocketUrl: websocketUrl.trim() || undefined,
         username,
         password,
       })
@@ -114,6 +116,7 @@ function App() {
     try {
       const result = await login({
         domain: sanitizeDomain(domain) || DEFAULT_XMPP_DOMAIN,
+        websocketUrl: websocketUrl.trim() || undefined,
         username,
         password,
       })
@@ -152,6 +155,22 @@ function App() {
             <span>Dominio</span>
             <input value={domain} onChange={(event) => setDomain(event.target.value)} autoComplete="off" />
           </label>
+          <details>
+            <summary style={{ cursor: 'pointer', marginTop: '0.5rem' }}>WebSocket URL manuale (opzionale)</summary>
+            <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              Specifica un WebSocket URL personalizzato se il discovery automatico fallisce. <br/>
+              <strong>Esempio per trashserver.net:</strong> wss://xmpp.trashserver.net/ws
+            </p>
+            <label className="field" style={{ marginTop: '0.5rem' }}>
+              <span>WebSocket URL</span>
+              <input 
+                value={websocketUrl} 
+                onChange={(event) => setWebsocketUrl(event.target.value)} 
+                placeholder="es. wss://xmpp.trashserver.net/ws"
+                autoComplete="off" 
+              />
+            </label>
+          </details>
           <p className="server-summary">
             Connessione: <strong>{serverSummary.domain}</strong>
           </p>

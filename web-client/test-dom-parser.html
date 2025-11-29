@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test XML Parsing</title></head>
+<body>
+<pre id="output"></pre>
+<script type="module">
+const output = document.getElementById('output');
+
+const xml = `<?xml version='1.0' encoding='utf-8'?>
+<XRD xmlns='http://docs.oasis-open.org/ns/xri/xrd-1.0'>
+  <Link rel="urn:xmpp:alt-connections:xbosh"
+        href="https://xmpp.trashserver.net/bosh" />
+  <Link rel="urn:xmpp:alt-connections:websocket"
+        href="wss://xmpp.trashserver.net/ws"" />
+</XRD>`;
+
+output.textContent = 'Raw XML:\n' + xml + '\n\n';
+
+try {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'text/xml');
+  
+  const parserError = doc.querySelector('parsererror');
+  if (parserError) {
+    output.textContent += 'Parser Error: ' + parserError.textContent + '\n';
+  } else {
+    output.textContent += 'Parsed successfully\n';
+  }
+  
+  const allLinks = doc.getElementsByTagName('Link');
+  output.textContent += 'Found ' + allLinks.length + ' links\n\n';
+  
+  for (let i = 0; i < allLinks.length; i++) {
+    const link = allLinks[i];
+    const rel = link.getAttribute('rel');
+    const href = link.getAttribute('href');
+    output.textContent += 'Link ' + i + ':\n';
+    output.textContent += '  rel: ' + rel + '\n';
+    output.textContent += '  href (raw): ' + JSON.stringify(href) + '\n';
+    
+    if (rel === 'urn:xmpp:alt-connections:websocket') {
+      const cleaned = href.replace(/["']+$/g, '').replace(/^["']+/g, '').trim();
+      output.textContent += '  href (cleaned): ' + JSON.stringify(cleaned) + '\n';
+    }
+  }
+} catch (e) {
+  output.textContent += 'Exception: ' + e.message;
+}
+</script>
+</body>
+</html>
