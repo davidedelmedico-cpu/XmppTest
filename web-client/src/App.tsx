@@ -17,11 +17,10 @@ type FormStatus = {
 const initialStatus: FormStatus = { state: 'idle' }
 
 const sanitizeDomain = (value: string) => value.trim().toLowerCase()
-const sanitizeWebsocket = (value: string) => value.trim()
 
 function App() {
   const [domain, setDomain] = useState(DEFAULT_XMPP_DOMAIN)
-  const [websocketUrl, setWebsocketUrl] = useState('')
+  const [websocketUrl] = useState('') // Always empty - auto-discovery only
 
   const [registerForm, setRegisterForm] = useState({ username: '', password: '', confirm: '' })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -31,12 +30,10 @@ function App() {
 
   const serverSummary = useMemo(() => {
     const cleanDomain = sanitizeDomain(domain) || DEFAULT_XMPP_DOMAIN
-    const ws = sanitizeWebsocket(websocketUrl)
     return {
       domain: cleanDomain,
-      websocket: ws.length ? ws : 'auto-discovery',
     }
-  }, [domain, websocketUrl])
+  }, [domain])
 
   const handleRegisterChange = (field: 'username' | 'password' | 'confirm') => (event: ChangeEvent<HTMLInputElement>) => {
     setRegisterForm((prev) => ({ ...prev, [field]: event.target.value }))
@@ -81,7 +78,6 @@ function App() {
     try {
       const result = await registerAccount({
         domain: sanitizeDomain(domain) || DEFAULT_XMPP_DOMAIN,
-        websocketUrl: sanitizeWebsocket(websocketUrl),
         username,
         password,
       })
@@ -119,7 +115,6 @@ function App() {
     try {
       const result = await login({
         domain: sanitizeDomain(domain) || DEFAULT_XMPP_DOMAIN,
-        websocketUrl: sanitizeWebsocket(websocketUrl),
         username,
         password,
       })
@@ -158,18 +153,8 @@ function App() {
             <span>Dominio</span>
             <input value={domain} onChange={(event) => setDomain(event.target.value)} autoComplete="off" />
           </label>
-          <label className="field">
-            <span>WebSocket URL <span style={{ fontSize: '0.85em', fontWeight: 'normal', opacity: 0.7 }}>(opzionale)</span></span>
-            <input 
-              value={websocketUrl} 
-              onChange={(event) => setWebsocketUrl(event.target.value)} 
-              autoComplete="off"
-              placeholder="Lascia vuoto per auto-discovery"
-            />
-          </label>
           <p className="server-summary">
-            Connessione attuale: <strong>{serverSummary.domain}</strong> →{' '}
-            <strong>{serverSummary.websocket}</strong>
+            Connessione: <strong>{serverSummary.domain}</strong>
           </p>
         </div>
       </header>

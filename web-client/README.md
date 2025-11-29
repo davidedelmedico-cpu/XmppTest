@@ -31,9 +31,10 @@ npm run preview    # serve il build prodotto localmente
 
 - **Dominio predefinito**: `jabber.hot-chilli.net` (consente registrazioni in-band).
 - **WebSocket URL**: Viene dedotto automaticamente dal dominio secondo XEP-0156 (host-meta discovery).
-  - Il client prova a recuperare l'URL WebSocket tramite `https://domain/.well-known/host-meta`
-  - **Se il discovery fallisce, viene mostrato un errore**: devi inserire manualmente l'URL WebSocket nel campo dedicato
-  - Il campo WebSocket URL è opzionale solo se il server supporta host-meta discovery
+  - Il client prova prima a recuperare l'URL WebSocket tramite `https://domain/.well-known/host-meta`
+  - Se il discovery fallisce, usa automaticamente l'URL standard `wss://domain:5281/xmpp-websocket`
+  - **Se anche il fallback fallisce, viene mostrato un errore**: il server non è raggiungibile o non supporta connessioni WebSocket
+  - Il campo WebSocket URL è completamente nascosto all'utente - tutto è automatico
 - Requisito: il server deve permettere connessioni CORS sul trasporto WebSocket.
 
 ## Flusso di test suggerito

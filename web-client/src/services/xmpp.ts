@@ -12,54 +12,38 @@ export type XmppConnectionSettings = {
 
 /**
  * Discovers WebSocket URL from domain using XEP-0156 (host-meta discovery)
- * Throws an error if discovery fails - no automatic fallback
+ * Falls back to standard port 5281 with /xmpp-websocket path if discovery fails
  */
 const discoverWebSocketUrl = async (domain: string): Promise<string> => {
-  const hostMetaUrl = `https://${domain}/.well-known/host-meta`
-  
-  let response: Response
+  // Try XEP-0156 discovery via .well-known/host-meta
   try {
-    response = await fetch(hostMetaUrl, {
+    const hostMetaUrl = `https://${domain}/.well-known/host-meta`
+    const response = await fetch(hostMetaUrl, {
       method: 'GET',
       headers: { Accept: 'application/xrd+xml, application/xml, text/xml' },
     })
+
+    if (response.ok) {
+      const text = await response.text()
+      // Parse XRD XML to find WebSocket link
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(text, 'text/xml')
+      const links = doc.querySelectorAll('Link[rel="urn:xmpp:alt-connections:websocket"]')
+      
+      if (links.length > 0) {
+        const href = links[0].getAttribute('href')
+        if (href) {
+          return href
+        }
+      }
+    }
   } catch (error) {
-    throw new Error(
-      `Impossibile raggiungere il server per l'auto-discovery: ${hostMetaUrl}. ` +
-      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
-    )
+    // Discovery failed, fall through to default
+    console.debug('host-meta discovery failed, using fallback WebSocket URL', error)
   }
 
-  if (!response.ok) {
-    throw new Error(
-      `Il server non fornisce informazioni di discovery (${response.status}). ` +
-      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
-    )
-  }
-
-  const text = await response.text()
-  
-  // Parse XRD XML to find WebSocket link
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(text, 'text/xml')
-  const links = doc.querySelectorAll('Link[rel="urn:xmpp:alt-connections:websocket"]')
-  
-  if (links.length === 0) {
-    throw new Error(
-      `Il server non espone un endpoint WebSocket tramite host-meta discovery. ` +
-      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
-    )
-  }
-
-  const href = links[0].getAttribute('href')
-  if (!href) {
-    throw new Error(
-      `L'endpoint WebSocket trovato nel host-meta è invalido. ` +
-      `Inserisci manualmente l'URL WebSocket nel campo dedicato.`
-    )
-  }
-
-  return href
+  // Fallback to standard WebSocket URL (port 5281, path /xmpp-websocket)
+  return `wss://${domain}:5281/xmpp-websocket`
 }
 
 export type XmppResult = {
@@ -180,7 +164,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       client.removeListener('session:started', handleSessionStarted)
       client.removeListener('auth:failed', handleAuthFailed)
       client.removeListener('stream:error', handleStreamError)
-      client.removeListener('disconnected', handleDisconnected)
+      client.removeListener('disconnected', handleDisconnectedWithError)
       removeCustomListener(client, 'register:completed', handleRegisterCompleted)
       removeCustomListener(client, 'register:error', handleRegisterError)
       removeCustomListener(client, 'register:unsupported', handleRegisterUnsupported)
@@ -243,15 +227,46 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       fail('Il server non supporta la registrazione in-band (XEP-0077).')
     }
 
+    const handleConnectionError = () => {
+      // This handles WebSocket connection failures (including fallback failures)
+      fail(
+        'Impossibile connettersi al server XMPP tramite WebSocket.',
+        'Il discovery automatico e il fallback standard hanno fallito. Verifica che il server sia raggiungibile e che supporti connessioni WebSocket.'
+      )
+    }
+
+    // Enhanced disconnected handler to detect connection failures
+    const handleDisconnectedWithError = () => {
+      if (!settled) {
+        // If we disconnected before session started, it's a connection failure
+        handleConnectionError()
+      } else {
+        // Normal disconnection after session
+        handleDisconnected()
+      }
+    }
+
     client.once('session:started', handleSessionStarted)
     client.once('auth:failed', handleAuthFailed)
-    client.once('stream:error', handleStreamError)
-    client.once('disconnected', handleDisconnected)
+    client.once('stream:error', (error: any) => {
+      // Check if it's a connection error (before authentication)
+      if (!settled && (error?.condition === 'connection-timeout' || error?.condition === 'host-unknown' || error?.condition === 'remote-connection-failed')) {
+        handleConnectionError()
+      } else {
+        handleStreamError(error)
+      }
+    })
+    client.once('disconnected', handleDisconnectedWithError)
     addCustomListener(client, 'register:completed', handleRegisterCompleted)
     addCustomListener(client, 'register:error', handleRegisterError, true)
     addCustomListener(client, 'register:unsupported', handleRegisterUnsupported, true)
 
-    client.connect()
+    try {
+      client.connect()
+    } catch (error) {
+      // Catch synchronous connection errors
+      handleConnectionError()
+    }
   })
 }
 
