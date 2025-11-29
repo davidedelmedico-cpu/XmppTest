@@ -7,11 +7,21 @@ import App from './App.tsx'
 // This ensures the URL is clean before React Router initializes
 (function handleGitHubPagesRedirect() {
   const windowSearch = window.location.search
+  const currentPath = window.location.pathname
+  
+  console.log('[DEBUG] Initial URL:', {
+    pathname: currentPath,
+    search: windowSearch,
+    href: window.location.href
+  })
   
   // Check if window.location.search starts with ?/ (from 404.html)
   if (windowSearch.startsWith('?/')) {
+    console.log('[DEBUG] Detected GitHub Pages redirect pattern')
+    
     // Extract path directly from window.location.search
     let path = windowSearch.substring(2) // Remove '?/'
+    console.log('[DEBUG] Extracted path from query:', path)
     
     // Handle additional query parameters (if any) - split on & but preserve ~and~
     const queryIndex = path.indexOf('&')
@@ -21,6 +31,7 @@ import App from './App.tsx'
       if (!beforeQuery.includes('~and~')) {
         // It's a real query parameter, stop here
         path = beforeQuery
+        console.log('[DEBUG] Found real query param, using path:', path)
       }
     }
     
@@ -44,9 +55,27 @@ import App from './App.tsx'
     const basePath = '/XmppTest'
     const cleanUrl = basePath + targetPath
     
+    console.log('[DEBUG] Cleaning URL:', {
+      original: window.location.href,
+      targetPath,
+      cleanUrl
+    })
+    
     // Replace the URL immediately to clean it up
-    // This happens before React Router initializes, so it will pick up the clean URL
-    window.history.replaceState(null, '', cleanUrl)
+    // Use window.location.replace to ensure a clean navigation (without full reload)
+    // This ensures React Router sees the clean URL when it initializes
+    if (window.location.pathname + window.location.search !== cleanUrl) {
+      console.log('[DEBUG] Replacing URL to:', cleanUrl)
+      window.location.replace(cleanUrl)
+      // Don't continue - let the page reload with clean URL
+      return
+    }
+    
+    console.log('[DEBUG] URL after cleanup:', {
+      pathname: window.location.pathname,
+      search: window.location.search,
+      href: window.location.href
+    })
   }
 })()
 

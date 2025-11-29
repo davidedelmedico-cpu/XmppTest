@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Redirect</title>
+</head>
+<body>
+    <h1>Test GitHub Pages Redirect</h1>
+    <p>Current URL: <span id="url"></span></p>
+    <p>Pathname: <span id="pathname"></span></p>
+    <p>Search: <span id="search"></span></p>
+    
+    <script>
+        function updateDisplay() {
+            document.getElementById('url').textContent = window.location.href;
+            document.getElementById('pathname').textContent = window.location.pathname;
+            document.getElementById('search').textContent = window.location.search;
+        }
+        
+        // Simulate the redirect logic
+        const windowSearch = window.location.search;
+        console.log('Initial URL:', window.location.href);
+        console.log('Search:', windowSearch);
+        
+        if (windowSearch.startsWith('?/')) {
+            console.log('Detected redirect pattern');
+            let path = windowSearch.substring(2);
+            console.log('Extracted path:', path);
+            
+            path = path.replace(/~and~/g, '&').replace(/^\/+|\/+$/g, '');
+            if (path.startsWith('XmppTest')) {
+                path = path.substring('XmppTest'.length).replace(/^\/+/, '');
+            }
+            const targetPath = path === '' ? '/' : '/' + path;
+            const cleanUrl = '/XmppTest' + targetPath;
+            
+            console.log('Cleaning to:', cleanUrl);
+            window.history.replaceState(null, '', cleanUrl);
+            console.log('After cleanup:', window.location.href);
+        }
+        
+        updateDisplay();
+        setInterval(updateDisplay, 1000);
+    </script>
+</body>
+</html>
