@@ -1,5 +1,6 @@
 import { createClient } from 'stanza'
 import type { Agent } from 'stanza'
+import plugins from 'stanza/plugins'
 import { DEFAULT_RESOURCE } from '../config/constants'
 
 export type XmppConnectionSettings = {
@@ -134,6 +135,7 @@ export type XmppResult = {
   message: string
   details?: string
   jid?: string
+  client?: Agent // Include client quando success è true
 }
 
 type Intent = 'register' | 'login'
@@ -204,7 +206,7 @@ const buildClient = async (settings: XmppConnectionSettings): Promise<Agent> => 
     domain,
   })
 
-  return createClient({
+  const client = createClient({
     jid: fullJid,
     resource: finalResource,
     server: serverHost,
@@ -221,6 +223,11 @@ const buildClient = async (settings: XmppConnectionSettings): Promise<Agent> => 
       bosh: false,
     },
   })
+
+  // Carica plugin necessari (MAM e Roster)
+  plugins(client)
+
+  return client
 }
 
 const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) => {
@@ -299,7 +306,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
         success: true,
         message: baseMessage,
         jid: client.jid,
-      })
+      }, true) // Mantieni connessione attiva
     }
 
     const handleAuthFailed = () => {
@@ -382,13 +389,19 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       removeCustomListener(client, 'register:unsupported', handleRegisterUnsupported)
     }
 
-    const finish = (result: XmppResult) => {
+    const finish = (result: XmppResult, keepConnected = false) => {
       if (settled) {
         return
       }
       settled = true
       cleanup()
-      void client.disconnect()
+      // Solo disconnetti se non dobbiamo mantenere la connessione
+      if (!keepConnected) {
+        void client.disconnect()
+      } else {
+        // Se manteniamo la connessione, aggiungi il client al risultato
+        result.client = client
+      }
       resolve(result)
     }
 
