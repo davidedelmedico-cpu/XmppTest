@@ -18,14 +18,28 @@ function RedirectHandler() {
     if (redirectPath) {
       // Replace ~and~ with & in the path
       let path = redirectPath.replace(/~and~/g, '&')
-      // Ensure path starts with /
-      if (!path.startsWith('/')) {
+      
+      // Remove the basePath (/XmppTest) from the path since basename handles it
+      if (path.startsWith('/XmppTest')) {
+        path = path.substring('/XmppTest'.length)
+      }
+      
+      // Ensure path starts with / (or is empty for root)
+      if (path && !path.startsWith('/')) {
         path = '/' + path
       }
+      
+      // If path is empty or just '/', navigate to root (basename will add /XmppTest)
+      const targetPath = path === '/XmppTest' || path === '' ? '/' : path
+      
       // Only navigate if the path is different from current location
-      if (location.pathname !== path) {
-        navigate(path, { replace: true })
-      }
+      // Use setTimeout to avoid navigation during render
+      const timer = setTimeout(() => {
+        if (location.pathname !== targetPath) {
+          navigate(targetPath, { replace: true })
+        }
+      }, 0)
+      return () => clearTimeout(timer)
     }
   }, [location.search, location.pathname, navigate])
 

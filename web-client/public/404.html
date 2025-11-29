@@ -22,23 +22,22 @@
       // then segmentCount should be 1 so that the /repo-name/ part is not replaced.
       // For a custom domain, set segmentCount to 0.
       var segmentCount = 1;
+      var basePath = '/XmppTest';
 
       var l = window.location;
       var pathSegments = l.pathname.split('/').filter(function(segment) {
         return segment !== '';
       });
       
-      // Build base path (e.g., /XmppTest)
-      var basePath = '/' + pathSegments.slice(0, segmentCount).join('/');
-      
-      // If we're at the base path or a sub-route, redirect appropriately
-      if (pathSegments.length <= segmentCount) {
-        // At base path, redirect to index with empty route
-        l.replace(basePath + '/?/');
-      } else {
-        // At a sub-route, redirect with the route path
-        var redirectPath = pathSegments.slice(segmentCount).join('/').replace(/&/g, '~and~');
-        var newUrl = basePath + '/?/' + redirectPath;
+      // Check if we're accessing a path under /XmppTest/
+      if (pathSegments.length > 0 && pathSegments[0] === 'XmppTest') {
+        // We're accessing /XmppTest/ or a sub-route
+        // Since files are deployed to root, redirect to root with the path as query parameter
+        var redirectPath = '';
+        if (pathSegments.length > segmentCount) {
+          redirectPath = pathSegments.slice(segmentCount).join('/').replace(/&/g, '~and~');
+        }
+        var newUrl = '/?/' + basePath + (redirectPath ? '/' + redirectPath : '');
         if (l.search) {
           newUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
         }
@@ -46,6 +45,9 @@
           newUrl += l.hash;
         }
         l.replace(newUrl);
+      } else {
+        // Not accessing /XmppTest/, redirect to root with basePath as query parameter
+        l.replace('/?/' + basePath);
       }
 
     </script>
