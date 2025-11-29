@@ -37,7 +37,13 @@
         if (pathSegments.length > segmentCount) {
           redirectPath = pathSegments.slice(segmentCount).join('/').replace(/&/g, '~and~');
         }
-        var newUrl = '/?/' + basePath + (redirectPath ? '/' + redirectPath : '');
+        // Build the path without double slashes
+        var fullPath = basePath;
+        if (redirectPath) {
+          // Ensure basePath doesn't end with / and redirectPath doesn't start with /
+          fullPath = basePath.replace(/\/$/, '') + '/' + redirectPath.replace(/^\//, '');
+        }
+        var newUrl = '/?/' + fullPath.replace(/^\//, ''); // Remove leading slash to avoid double slash
         if (l.search) {
           newUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
         }
@@ -47,7 +53,8 @@
         l.replace(newUrl);
       } else {
         // Not accessing /XmppTest/, redirect to root with basePath as query parameter
-        l.replace('/?/' + basePath);
+        // Remove leading slash from basePath to avoid double slash
+        l.replace('/?/' + basePath.replace(/^\//, ''));
       }
 
     </script>
