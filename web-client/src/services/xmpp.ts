@@ -191,7 +191,7 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
 const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
   let settled = false
   let registerMessage = 'Account creato e autenticato.'
-  const CONNECTION_TIMEOUT = 30000 // 30 seconds - registration + auth can take time
+  const CONNECTION_TIMEOUT = 5000 // 5 seconds
 
   return new Promise((resolve) => {
     // Define handlers first
