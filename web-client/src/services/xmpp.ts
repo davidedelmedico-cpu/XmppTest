@@ -208,6 +208,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     // Define handlers first
     const handleSessionStarted = () => {
       console.debug('Session started event received, JID:', client.jid)
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       const baseMessage =
         intent === 'register'
           ? registerMessage
@@ -221,10 +222,12 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     }
 
     const handleAuthFailed = () => {
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       fail('Autenticazione rifiutata dal server XMPP.', 'Controlla username/password o se il server richiede prerequisiti.')
     }
 
     const handleStreamError = (error: any) => {
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       // Check if it's a connection error (before authentication)
       if (!settled && (error?.condition === 'connection-timeout' || error?.condition === 'host-unknown' || error?.condition === 'remote-connection-failed')) {
         handleConnectionError()
@@ -238,6 +241,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     }
 
     const handleDisconnected = () => {
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       if (!settled) {
         fail('Connessione terminata prima di completare la procedura.')
       }
@@ -245,23 +249,27 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
 
     const handleRegisterCompleted = () => {
       console.debug('Registration completed event received')
+      clearTimeout(timeoutId) // Cancel timeout - we got a response
       registerMessage = 'Account registrato e sessione aperta.'
       // Registration completed - the client should continue with SASL auth automatically
       // We wait for session:started which should come after successful authentication
-      // If it doesn't come, the timeout will catch it
+      // If it doesn't come, we'll need a new timeout, but for now we got a response
     }
 
     const handleRegisterError = (error: any) => {
       console.error('Registration error event received:', error)
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       fail('Registrazione fallita.', error?.message || 'Verifica che il server consenta la registrazione in-band.')
     }
 
     const handleRegisterUnsupported = () => {
       console.debug('Registration unsupported event received')
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       fail('Il server non supporta la registrazione in-band (XEP-0077).')
     }
 
     const handleConnectionError = () => {
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       // This handles WebSocket connection failures (including fallback failures)
       fail(
         'Impossibile connettersi al server XMPP tramite WebSocket.',
@@ -271,6 +279,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
 
     // Enhanced disconnected handler to detect connection failures
     const handleDisconnectedWithError = () => {
+      clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       if (!settled) {
         // If we disconnected before session started, it's a connection failure
         handleConnectionError()
@@ -311,7 +320,9 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     }
 
     // Timeout to prevent hanging indefinitely
-    const timeoutId = setTimeout(() => {
+    // This will be cleared as soon as we get ANY response from the server
+    let timeoutId: ReturnType<typeof setTimeout>
+    timeoutId = setTimeout(() => {
       if (!settled) {
         settled = true
         cleanup()
