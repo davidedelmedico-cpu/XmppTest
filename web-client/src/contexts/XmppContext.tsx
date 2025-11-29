@@ -58,8 +58,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       hasAttemptedReconnect.current = true
       
       const attemptAutoReconnect = async () => {
-        console.log('[INIT] Inizio inizializzazione, isInitializing:', true)
-        setIsInitializing(true)
+        console.log('[INIT] Inizio inizializzazione, isInitializing:', isInitializing)
+        // isInitializing parte già da true, non serve impostarlo di nuovo
         try {
           const saved = loadCredentials()
           console.log('[INIT] Credenziali caricate:', saved ? 'trovate' : 'non trovate')
