@@ -58,7 +58,7 @@ const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string;
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { connect } = useXmpp()
+  const { connect, isLoading } = useXmpp()
   const [loginForm, setLoginForm] = useState({ jid: '', password: '' })
   const [loginStatus, setLoginStatus] = useState<FormStatus>(initialStatus)
 
@@ -120,6 +120,11 @@ export function LoginPage() {
           <div className="auth-card__header">
             <h3>Accedi</h3>
           </div>
+          {isLoading && (
+            <div className="status status--pending" style={{ marginBottom: '1rem' }}>
+              <p>Riconnessione automatica in corso...</p>
+            </div>
+          )}
           <form className="auth-form" onSubmit={handleLoginSubmit}>
             <div className="form-grid">
               <label className="field">

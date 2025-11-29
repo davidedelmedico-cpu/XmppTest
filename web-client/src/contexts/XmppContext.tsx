@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { Agent } from 'stanza'
 import type { ReceivedMessage } from 'stanza/protocol'
@@ -9,6 +9,7 @@ import {
   updateConversationOnNewMessage,
 } from '../services/conversations'
 import { getConversations, type Conversation } from '../services/conversations-db'
+import { saveCredentials, loadCredentials, clearCredentials } from '../services/auth-storage'
 
 interface XmppContextType {
   client: Agent | null
@@ -31,6 +32,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const hasAttemptedReconnect = useRef(false)
 
   // Carica conversazioni dal database locale all'avvio (solo se non connesso)
   useEffect(() => {
@@ -46,6 +48,30 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       loadCachedConversations()
     }
   }, [isConnected])
+
+  // Tentativo di riconnessione automatica all'avvio se ci sono credenziali salvate
+  useEffect(() => {
+    if (!hasAttemptedReconnect.current && !isConnected && !isLoading) {
+      hasAttemptedReconnect.current = true
+      const attemptAutoReconnect = async () => {
+        const saved = loadCredentials()
+        if (saved) {
+          console.log('Credenziali trovate, tentativo di riconnessione automatica...')
+          try {
+            await connect(saved.jid, saved.password)
+            console.log('Riconnessione automatica completata con successo')
+          } catch (error) {
+            console.error('Riconnessione automatica fallita:', error)
+            // Se la riconnessione fallisce, cancella le credenziali salvate
+            clearCredentials()
+            setError(error instanceof Error ? error.message : 'Riconnessione automatica fallita')
+          }
+        }
+      }
+      attemptAutoReconnect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Esegui solo all'avvio
 
   // Gestione eventi real-time quando client è connesso
   useEffect(() => {
@@ -97,6 +123,9 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       setIsConnected(true)
       setJid(result.jid || jid)
 
+      // Salva le credenziali per la riconnessione automatica dopo refresh
+      saveCredentials(jid, password)
+
       // Mostra SUBITO le conversazioni dalla cache locale
       const cachedConversations = await getConversations()
       if (cachedConversations.length > 0) {
@@ -125,6 +154,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Errore di connessione'
       setError(errorMessage)
+      // Se il login fallisce, cancella le credenziali salvate
+      clearCredentials()
       throw err
     } finally {
       setIsLoading(false)
@@ -139,6 +170,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     setIsConnected(false)
     setJid(null)
     setConversations([])
+    // Cancella le credenziali salvate quando si fa logout
+    clearCredentials()
   }
 
   const refreshConversations = async () => {
