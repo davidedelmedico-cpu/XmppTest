@@ -170,10 +170,18 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
         type: 'set',
       })
       console.debug('Registration IQ result:', result)
+      
+      // After successful registration, the client should automatically authenticate
+      // with the newly created credentials. We just need to wait for session:started
       emitCustomEvent(client, 'register:completed')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration IQ error:', error)
-      emitCustomEvent(client, 'register:error', error)
+      // Check if it's a conflict (user already exists) or other error
+      if (error?.condition === 'conflict') {
+        emitCustomEvent(client, 'register:error', new Error('Username già esistente'))
+      } else {
+        emitCustomEvent(client, 'register:error', error)
+      }
     }
 
     done()
