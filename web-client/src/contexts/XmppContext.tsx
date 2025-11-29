@@ -154,6 +154,10 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         setConversations(enrichedCached)
       }
 
+      // IMPORTANTE: imposta isLoading a false DOPO aver impostato isConnected
+      // Questo evita che la LoginPage venga mostrata brevemente
+      setIsLoading(false)
+
       // Poi in background carica e aggiorna dal server (asincrono)
       void (async () => {
         try {
@@ -176,9 +180,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       setError(errorMessage)
       // Se il login fallisce, cancella le credenziali salvate
       clearCredentials()
-      throw err
-    } finally {
       setIsLoading(false)
+      throw err
     }
   }
 

@@ -43,17 +43,18 @@ function InitializingScreen() {
 }
 
 function AppRoutes() {
-  const { isConnected, isInitializing } = useXmpp()
+  const { isConnected, isInitializing, isLoading } = useXmpp()
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Show initializing screen while checking credentials
-  console.log('[APP] AppRoutes render, isInitializing:', isInitializing)
-  if (isInitializing) {
-    console.log('[APP] Mostrando InitializingScreen')
+  // Show initializing screen while checking credentials OR while connecting
+  // IMPORTANTE: questo controllo DEVE essere fatto PRIMA di qualsiasi altro rendering
+  // Mostra lo spinner se:
+  // 1. Stiamo ancora inizializzando (controllo credenziali)
+  // 2. Stiamo caricando e non siamo ancora connessi (riconnessione in corso)
+  if (isInitializing || (isLoading && !isConnected)) {
     return <InitializingScreen />
   }
-  console.log('[APP] Mostrando Routes normali')
 
   // After initialization, route appropriately
   useEffect(() => {
