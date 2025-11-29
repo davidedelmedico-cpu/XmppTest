@@ -15,51 +15,78 @@ export function ConversationsList() {
     const container = containerRef.current
     if (!container) return
 
+    let startY = 0
+    let currentY = 0
+    let isDragging = false
+
     const handleTouchStart = (e: TouchEvent) => {
+      // Solo se siamo in cima alla lista
       if (container.scrollTop === 0) {
-        touchStartY.current = e.touches[0].clientY
+        startY = e.touches[0].clientY
+        isDragging = true
+        touchStartY.current = startY
         isPulling.current = true
       }
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPulling.current) return
+      if (!isDragging || !isPulling.current) return
 
-      const currentY = e.touches[0].clientY
-      const distance = Math.max(0, currentY - touchStartY.current)
+      currentY = e.touches[0].clientY
+      const distance = currentY - startY
 
+      // Solo se trasciniamo verso il basso
       if (distance > 0 && container.scrollTop === 0) {
         e.preventDefault() // Previeni scroll normale
-        setPullDistance(Math.min(distance, 80)) // Max 80px
-      } else {
+        const pullDist = Math.min(distance * 0.5, 100) // Riduci sensibilità, max 100px
+        setPullDistance(pullDist)
+      } else if (distance <= 0) {
+        // Reset se torniamo indietro
+        isDragging = false
         isPulling.current = false
         setPullDistance(0)
       }
     }
 
     const handleTouchEnd = () => {
-      if (pullDistance > 40 && !isRefreshing && !isLoading) {
-        // Trigger refresh se trascinato abbastanza
+      const finalDistance = pullDistance
+      
+      if (finalDistance > 50 && !isRefreshing && !isLoading) {
+        // Trigger refresh se trascinato abbastanza (50px)
         setIsRefreshing(true)
-        refreshConversations().finally(() => {
-          setIsRefreshing(false)
-          setPullDistance(0)
-        })
+        refreshConversations()
+          .then(() => {
+            // Piccolo delay per mostrare il completamento
+            setTimeout(() => {
+              setIsRefreshing(false)
+              setPullDistance(0)
+            }, 300)
+          })
+          .catch(() => {
+            setIsRefreshing(false)
+            setPullDistance(0)
+          })
       } else {
-        // Reset se non abbastanza
+        // Reset con animazione
         setPullDistance(0)
       }
+      
+      isDragging = false
       isPulling.current = false
+      startY = 0
+      currentY = 0
     }
 
-    container.addEventListener('touchstart', handleTouchStart, { passive: false })
+    container.addEventListener('touchstart', handleTouchStart, { passive: true })
     container.addEventListener('touchmove', handleTouchMove, { passive: false })
-    container.addEventListener('touchend', handleTouchEnd)
+    container.addEventListener('touchend', handleTouchEnd, { passive: true })
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: true })
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('touchmove', handleTouchMove)
       container.removeEventListener('touchend', handleTouchEnd)
+      container.removeEventListener('touchcancel', handleTouchEnd)
     }
   }, [pullDistance, isRefreshing, isLoading, refreshConversations])
 
@@ -115,41 +142,48 @@ export function ConversationsList() {
       </div>
 
       {/* Pull-to-refresh indicator */}
-      <div
-        className="conversations-list__pull-refresh"
-        style={{
-          transform: `translateY(${pullDistance - 60}px)`,
-          opacity: pullDistance > 10 ? Math.min(pullDistance / 60, 1) : 0,
-        }}
-      >
-        {isRefreshing || isLoading ? (
-          <div className="conversations-list__spinner"></div>
-        ) : (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{
-              transform: pullDistance > 40 ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-            }}
-          >
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-          </svg>
-        )}
-        <span>{isRefreshing || isLoading ? 'Aggiornamento...' : 'Trascina per aggiornare'}</span>
-      </div>
+      {pullDistance > 5 && (
+        <div
+          className="conversations-list__pull-refresh"
+          style={{
+            transform: `translateY(${60 + pullDistance}px)`,
+            opacity: Math.min(pullDistance / 60, 1),
+          }}
+        >
+          {isRefreshing || isLoading ? (
+            <>
+              <div className="conversations-list__spinner"></div>
+              <span>Aggiornamento...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{
+                  transform: pullDistance > 50 ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                }}
+              >
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              </svg>
+              <span>{pullDistance > 50 ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}</span>
+            </>
+          )}
+        </div>
+      )}
 
       <div
         ref={containerRef}
         className="conversations-list__items"
         style={{
-          transform: `translateY(${Math.min(pullDistance, 80)}px)`,
-          transition: pullDistance === 0 ? 'transform 0.3s ease-out' : 'none',
+          transform: `translateY(${Math.min(pullDistance, 100)}px)`,
+          transition: pullDistance === 0 && !isRefreshing ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
         }}
       >
         {isLoading && conversations.length === 0 ? (

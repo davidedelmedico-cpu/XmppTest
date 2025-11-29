@@ -28,7 +28,7 @@
 
 .conversations-list__pull-refresh {
   position: absolute;
-  top: 0;
+  top: -60px;
   left: 0;
   right: 0;
   height: 60px;
@@ -41,6 +41,7 @@
   font-size: 0.875rem;
   pointer-events: none;
   z-index: 5;
+  transition: transform 0.2s ease-out;
 }
 
 .conversations-list__spinner {
