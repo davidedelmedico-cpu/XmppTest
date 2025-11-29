@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/XmppTest/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>web-client</title>
+    <script>
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      // This script takes the current url and converts the path and query
+      // string into just a path portion and then redirects. For example:
+      // https://www.foo.com/one/two?a=b&c=d#qwe, becomes
+      // https://www.foo.com/XmppTest/one/two
+      // Note: this 404.html file must be at least 512 bytes for it to work
+      // with Internet Explorer (it is currently > 512 bytes)
+
+      // If you're creating a Project Pages site and NOT using a custom domain,
+      // then set segmentCount to 1 (enterprise users may need to set it to > 1).
+      // This way the code will only replace the route part and not the real directory.
+      // For example, if your app is at https://username.github.io/repo-name/one/two,
+      // then segmentCount should be 1 so that the /repo-name/ part is not replaced.
+      // For a custom domain, set segmentCount to 0.
+      var segmentCount = 1;
+      var basePath = '/XmppTest';
+
+      var l = window.location;
+      var pathSegments = l.pathname.split('/').filter(function(segment) {
+        return segment !== '';
+      });
+      
+      // Check if we're accessing a path under /XmppTest/
+      if (pathSegments.length > 0 && pathSegments[0] === 'XmppTest') {
+        // We're accessing /XmppTest/ or a sub-route
+        // Since files are deployed to root, redirect to root with the path as query parameter
+        var redirectPath = '';
+        if (pathSegments.length > segmentCount) {
+          redirectPath = pathSegments.slice(segmentCount).join('/').replace(/&/g, '~and~');
+        }
+        // Build the path without double slashes
+        var fullPath = basePath;
+        if (redirectPath) {
+          // Ensure basePath doesn't end with / and redirectPath doesn't start with /
+          fullPath = basePath.replace(/\/$/, '') + '/' + redirectPath.replace(/^\//, '');
+        }
+        var newUrl = '/?/' + fullPath.replace(/^\//, ''); // Remove leading slash to avoid double slash
+        if (l.search) {
+          newUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
+        }
+        if (l.hash) {
+          newUrl += l.hash;
+        }
+        l.replace(newUrl);
+      } else {
+        // Not accessing /XmppTest/, redirect to root with basePath as query parameter
+        // Remove leading slash from basePath to avoid double slash
+        l.replace('/?/' + basePath.replace(/^\//, ''));
+      }
+
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
