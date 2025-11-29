@@ -202,7 +202,7 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
 const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
   let settled = false
   let registerMessage = 'Account creato e autenticato.'
-  const CONNECTION_TIMEOUT = 5000 // 5 seconds
+  const CONNECTION_TIMEOUT = 15000 // 15 seconds - increased for slower servers
 
   return new Promise((resolve) => {
     // Define handlers first
@@ -322,8 +322,11 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     // Timeout to prevent hanging indefinitely
     // This will be cleared as soon as we get ANY response from the server
     let timeoutId: ReturnType<typeof setTimeout>
+    const startTime = Date.now()
     timeoutId = setTimeout(() => {
       if (!settled) {
+        const elapsed = Date.now() - startTime
+        console.warn(`Connection timeout after ${elapsed}ms. No response from server.`)
         settled = true
         cleanup()
         void client.disconnect()
@@ -351,6 +354,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     // Start connection
     try {
       console.debug('Attempting to connect to:', client.config.transports?.websocket)
+      console.debug(`Timeout set to ${CONNECTION_TIMEOUT}ms`)
       client.connect()
     } catch (error) {
       // Catch synchronous connection errors
