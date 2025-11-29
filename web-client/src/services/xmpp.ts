@@ -356,7 +356,7 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       }
     }, CONNECTION_TIMEOUT)
 
-    // Register event handlers
+    // Register event handlers BEFORE calling connect
     client.once('session:started', handleSessionStarted)
     client.once('auth:failed', handleAuthFailed)
     client.once('stream:error', handleStreamError)
@@ -366,27 +366,17 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     addCustomListener(client, 'register:error', handleRegisterError, true)
     addCustomListener(client, 'register:unsupported', handleRegisterUnsupported, true)
     
-    // Also listen for stream:error that might occur after registration failure
-    // This can happen when server closes stream after rejecting registration
-
-    // Start connection
-    try {
-      console.debug('Attempting to connect to:', client.config.transports?.websocket)
-      console.debug(`Timeout set to ${CONNECTION_TIMEOUT}ms`)
-      client.connect()
-    } catch (error) {
-      // Catch synchronous connection errors
-      console.error('Synchronous connection error:', error)
-      handleConnectionError()
-    }
+    // DON'T call connect() here - let the caller do it after registerFeature is set
   })
 }
 
 const connectWithIntent = async (settings: XmppConnectionSettings, intent: Intent) => {
   const client = await buildClient(settings)
 
-  // Enable registration BEFORE starting the flow
-  // registerFeature must be called before client.connect()
+  // 1. Start the flow (registers event handlers, starts timeout, returns promise)
+  const flowPromise = runFlow(client, intent)
+  
+  // 2. Enable registration feature if needed (must be before connect())
   if (intent === 'register') {
     enableInBandRegistration(client, {
       domain: settings.domain,
@@ -395,8 +385,17 @@ const connectWithIntent = async (settings: XmppConnectionSettings, intent: Inten
     })
   }
 
-  // Now start the flow which registers event handlers and calls connect()
-  return runFlow(client, intent)
+  // 3. Now start the connection (handlers are registered, features are set)
+  try {
+    console.debug('Attempting to connect to:', client.config.transports?.websocket)
+    client.connect()
+  } catch (error) {
+    // Synchronous connection error - this should be rare
+    console.error('Synchronous connection error:', error)
+    // The promise will timeout or be rejected by event handlers
+  }
+
+  return flowPromise
 }
 
 export const registerAccount = async (
