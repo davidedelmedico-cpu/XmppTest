@@ -54,17 +54,20 @@ export function ConversationsList() {
       if (finalDistance > 50 && !isRefreshing && !isLoading) {
         // Trigger refresh se trascinato abbastanza (50px)
         setIsRefreshing(true)
+        window.dispatchEvent(new CustomEvent('refresh-start'))
         refreshConversations()
           .then(() => {
             // Piccolo delay per mostrare il completamento
             setTimeout(() => {
               setIsRefreshing(false)
               setPullDistance(0)
+              window.dispatchEvent(new CustomEvent('refresh-end'))
             }, 300)
           })
           .catch(() => {
             setIsRefreshing(false)
             setPullDistance(0)
+            window.dispatchEvent(new CustomEvent('refresh-end'))
           })
       } else {
         // Reset con animazione
