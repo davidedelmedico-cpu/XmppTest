@@ -344,10 +344,8 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
 const connectWithIntent = async (settings: XmppConnectionSettings, intent: Intent) => {
   const client = await buildClient(settings)
 
-  // Start the flow first to register event handlers
-  const flowPromise = runFlow(client, intent)
-
-  // Then enable registration if needed (after handlers are registered)
+  // Enable registration BEFORE starting the flow
+  // registerFeature must be called before client.connect()
   if (intent === 'register') {
     enableInBandRegistration(client, {
       domain: settings.domain,
@@ -356,7 +354,8 @@ const connectWithIntent = async (settings: XmppConnectionSettings, intent: Inten
     })
   }
 
-  return flowPromise
+  // Now start the flow which registers event handlers and calls connect()
+  return runFlow(client, intent)
 }
 
 export const registerAccount = async (
