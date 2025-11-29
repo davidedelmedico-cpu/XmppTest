@@ -29,6 +29,13 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
       const parser = new DOMParser()
       const doc = parser.parseFromString(text, 'text/xml')
       
+      // Check for parsing errors
+      const parserError = doc.querySelector('parsererror')
+      if (parserError) {
+        console.error('XML parsing error:', parserError.textContent)
+        throw new Error('Failed to parse host-meta XML')
+      }
+      
       // Use getElementsByTagName to avoid namespace issues with querySelector
       const allLinks = doc.getElementsByTagName('Link')
       
@@ -38,11 +45,16 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
         if (rel === 'urn:xmpp:alt-connections:websocket') {
           const href = link.getAttribute('href')
           if (href) {
-            // Clean up any extra quotes that might be in the XML
-            return href.replace(/^["']|["']$/g, '').trim()
+            // Clean up any extra quotes that might be in the XML (handle cases like href="url"")
+            const cleanedHref = href.replace(/["']+$/g, '').replace(/^["']+/g, '').trim()
+            console.debug('Discovered WebSocket URL:', cleanedHref)
+            return cleanedHref
           }
         }
       }
+      console.debug('No WebSocket link found in host-meta')
+    } else {
+      console.debug('host-meta response not OK:', response.status)
     }
   } catch (error) {
     // Discovery failed, fall through to default
@@ -50,7 +62,9 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
   }
 
   // Fallback to standard WebSocket URL (port 5281, path /xmpp-websocket)
-  return `wss://${domain}:5281/xmpp-websocket`
+  const fallbackUrl = `wss://${domain}:5281/xmpp-websocket`
+  console.debug('Using fallback WebSocket URL:', fallbackUrl)
+  return fallbackUrl
 }
 
 export type XmppResult = {
@@ -287,9 +301,11 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
 
     // Start connection
     try {
+      console.debug('Attempting to connect to:', client.config.transports?.websocket)
       client.connect()
     } catch (error) {
       // Catch synchronous connection errors
+      console.error('Synchronous connection error:', error)
       handleConnectionError()
     }
   })
