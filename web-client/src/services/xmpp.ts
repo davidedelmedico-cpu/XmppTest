@@ -165,36 +165,10 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
 const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
   let settled = false
   let registerMessage = 'Account creato e autenticato.'
+  const CONNECTION_TIMEOUT = 30000 // 30 seconds
 
   return new Promise((resolve) => {
-    const cleanup = () => {
-      client.removeListener('session:started', handleSessionStarted)
-      client.removeListener('auth:failed', handleAuthFailed)
-      client.removeListener('stream:error', handleStreamError)
-      client.removeListener('disconnected', handleDisconnectedWithError)
-      removeCustomListener(client, 'register:completed', handleRegisterCompleted)
-      removeCustomListener(client, 'register:error', handleRegisterError)
-      removeCustomListener(client, 'register:unsupported', handleRegisterUnsupported)
-    }
-
-    const finish = (result: XmppResult) => {
-      if (settled) {
-        return
-      }
-      settled = true
-      cleanup()
-      void client.disconnect()
-      resolve(result)
-    }
-
-    const fail = (message: string, details?: string) => {
-      finish({
-        success: false,
-        message,
-        details,
-      })
-    }
-
+    // Define handlers first
     const handleSessionStarted = () => {
       const baseMessage =
         intent === 'register'
@@ -213,7 +187,12 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
     }
 
     const handleStreamError = (error: any) => {
-      fail('Il server ha chiuso lo stream.', error?.text || error?.condition)
+      // Check if it's a connection error (before authentication)
+      if (!settled && (error?.condition === 'connection-timeout' || error?.condition === 'host-unknown' || error?.condition === 'remote-connection-failed')) {
+        handleConnectionError()
+      } else {
+        fail('Il server ha chiuso lo stream.', error?.text || error?.condition)
+      }
     }
 
     const handleDisconnected = () => {
@@ -253,21 +232,60 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       }
     }
 
+    // Cleanup function
+    const cleanup = () => {
+      clearTimeout(timeoutId)
+      client.removeListener('session:started', handleSessionStarted)
+      client.removeListener('auth:failed', handleAuthFailed)
+      client.removeListener('stream:error', handleStreamError)
+      client.removeListener('disconnected', handleDisconnectedWithError)
+      removeCustomListener(client, 'register:completed', handleRegisterCompleted)
+      removeCustomListener(client, 'register:error', handleRegisterError)
+      removeCustomListener(client, 'register:unsupported', handleRegisterUnsupported)
+    }
+
+    const finish = (result: XmppResult) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      void client.disconnect()
+      resolve(result)
+    }
+
+    const fail = (message: string, details?: string) => {
+      finish({
+        success: false,
+        message,
+        details,
+      })
+    }
+
+    // Timeout to prevent hanging indefinitely
+    const timeoutId = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        cleanup()
+        void client.disconnect()
+        resolve({
+          success: false,
+          message: 'Timeout: la connessione al server ha richiesto troppo tempo.',
+          details: 'Verifica che il server sia raggiungibile e che supporti connessioni WebSocket.',
+        })
+      }
+    }, CONNECTION_TIMEOUT)
+
+    // Register event handlers
     client.once('session:started', handleSessionStarted)
     client.once('auth:failed', handleAuthFailed)
-    client.once('stream:error', (error: any) => {
-      // Check if it's a connection error (before authentication)
-      if (!settled && (error?.condition === 'connection-timeout' || error?.condition === 'host-unknown' || error?.condition === 'remote-connection-failed')) {
-        handleConnectionError()
-      } else {
-        handleStreamError(error)
-      }
-    })
+    client.once('stream:error', handleStreamError)
     client.once('disconnected', handleDisconnectedWithError)
     addCustomListener(client, 'register:completed', handleRegisterCompleted)
     addCustomListener(client, 'register:error', handleRegisterError, true)
     addCustomListener(client, 'register:unsupported', handleRegisterUnsupported, true)
 
+    // Start connection
     try {
       client.connect()
     } catch (error) {
