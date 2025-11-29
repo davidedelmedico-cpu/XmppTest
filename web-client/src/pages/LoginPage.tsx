@@ -58,15 +58,9 @@ const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string;
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { connect, isConnected } = useXmpp()
+  const { connect } = useXmpp()
   const [loginForm, setLoginForm] = useState({ jid: '', password: '' })
   const [loginStatus, setLoginStatus] = useState<FormStatus>(initialStatus)
-
-  // Se già connesso, reindirizza alle conversazioni
-  if (isConnected) {
-    navigate('/conversations')
-    return null
-  }
 
   const handleLoginChange = (field: 'jid' | 'password') => (event: ChangeEvent<HTMLInputElement>) => {
     setLoginForm((prev) => ({ ...prev, [field]: event.target.value }))

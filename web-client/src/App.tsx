@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { XmppProvider } from './contexts/XmppContext'
+import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { LoginPage } from './pages/LoginPage'
 import { ConversationsPage } from './pages/ConversationsPage'
 import './App.css'
@@ -46,16 +46,45 @@ function RedirectHandler() {
   return null
 }
 
+// Component to handle initial routing based on connection status
+function InitialRouteHandler() {
+  const { isConnected } = useXmpp()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Only redirect if we're at the root path and not already navigating
+    if (location.pathname === '/') {
+      if (isConnected) {
+        // If connected, redirect to conversations
+        navigate('/conversations', { replace: true })
+      }
+      // If not connected, stay on login page (no redirect needed)
+    }
+  }, [isConnected, location.pathname, navigate])
+
+  return null
+}
+
+function AppRoutes() {
+  return (
+    <>
+      <RedirectHandler />
+      <InitialRouteHandler />
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/conversations" element={<ConversationsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  )
+}
+
 function App() {
   return (
     <XmppProvider>
       <BrowserRouter basename="/XmppTest">
-        <RedirectHandler />
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/conversations" element={<ConversationsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </XmppProvider>
   )
