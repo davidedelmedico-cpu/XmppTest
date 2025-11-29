@@ -14,14 +14,28 @@ function RedirectHandler() {
   useEffect(() => {
     // Check if we have a redirect query parameter (from 404.html)
     // The 404.html creates URLs like /?/XmppTest/conversations
-    const searchParams = new URLSearchParams(location.search)
-    const redirectPath = searchParams.get('/')
+    const windowSearch = window.location.search
     
-    if (redirectPath && !hasRedirected.current) {
+    // Check if window.location.search starts with ?/ (direct check)
+    if (windowSearch.startsWith('?/') && !hasRedirected.current) {
       hasRedirected.current = true
       
-      // Replace ~and~ with & in the path
-      let path = redirectPath.replace(/~and~/g, '&')
+      // Extract path directly from window.location.search
+      let path = windowSearch.substring(2) // Remove '?/'
+      
+      // Handle additional query parameters (if any) - split on & but preserve ~and~
+      const queryIndex = path.indexOf('&')
+      if (queryIndex !== -1) {
+        // Check if it's a real & or a ~and~
+        const beforeQuery = path.substring(0, queryIndex)
+        if (!beforeQuery.includes('~and~')) {
+          // It's a real query parameter, stop here
+          path = beforeQuery
+        }
+      }
+      
+      // Replace ~and~ with & in the path (for paths that had & encoded)
+      path = path.replace(/~and~/g, '&')
       
       // Remove leading/trailing slashes and normalize
       path = path.replace(/^\/+|\/+$/g, '')
@@ -36,29 +50,23 @@ function RedirectHandler() {
       // Build target path: empty string for root, or /path for sub-routes
       const targetPath = path === '' ? '/' : '/' + path
       
-      // Navigate immediately to clean up the URL
-      // This will replace the current URL (with query params) with a clean path
-      navigate(targetPath, { replace: true })
+      // Build the full clean URL with basePath
+      const basePath = '/XmppTest'
+      const cleanUrl = basePath + targetPath
       
-      // Also ensure the browser URL is updated correctly
-      // This is a fallback in case navigate doesn't fully clean the URL
-      if (window.location.search) {
-        const basePath = '/XmppTest'
-        const cleanUrl = basePath + targetPath
-        // Use a small delay to ensure React Router has processed the navigation
-        setTimeout(() => {
-          if (window.location.search) {
-            window.history.replaceState(null, '', cleanUrl)
-          }
-        }, 100)
-      }
+      // First, clean up the URL in the browser (remove query params)
+      window.history.replaceState(null, '', cleanUrl)
+      
+      // Then navigate with React Router to update the internal state
+      // This ensures React Router is in sync with the clean URL
+      navigate(targetPath, { replace: true })
     }
     
-    // Reset the flag when search params change
-    if (!location.search) {
+    // Reset the flag when search params are cleared
+    if (!windowSearch) {
       hasRedirected.current = false
     }
-  }, [location.search, navigate])
+  }, [location.pathname, location.search, navigate])
 
   return null
 }
