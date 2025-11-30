@@ -215,30 +215,37 @@ async function testLogin(page) {
   }
 }
 
-// Test 4: Console logs
-async function checkConsoleLogs(page) {
+// Test 4: Analisi console logs
+async function analyzeConsoleLogs(consoleLogs) {
   log.section('Test 4: Analisi Console Logs');
   
-  const logs = {
-    errors: [],
-    warnings: [],
-    info: []
+  const { errors, warnings, info } = consoleLogs;
+  
+  if (errors.length > 0) {
+    log.error(`Trovati ${errors.length} errori in console:`);
+    errors.forEach(e => log.error(`  - ${e}`));
+  } else {
+    log.success('Nessun errore in console');
+  }
+  
+  if (warnings.length > 0) {
+    log.warn(`Trovati ${warnings.length} warning in console:`);
+    warnings.forEach(w => log.warn(`  - ${w}`));
+  }
+  
+  // Mostra TUTTI i log info
+  if (info.length > 0) {
+    log.info(`Console logs (TUTTI ${info.length}):`);
+    info.forEach(i => log.info(`  - ${i}`));
+  } else {
+    log.warn('NESSUN log info trovato - possibile problema di inizializzazione!');
+  }
+  
+  return {
+    passed: errors.length === 0,
+    errors: errors.length,
+    warnings: warnings.length
   };
-  
-  page.on('console', msg => {
-    const type = msg.type();
-    const text = msg.text();
-    
-    if (type === 'error') {
-      logs.errors.push(text);
-    } else if (type === 'warning') {
-      logs.warnings.push(text);
-    } else if (type === 'log' || type === 'info') {
-      logs.info.push(text);
-    }
-  });
-  
-  return logs;
 }
 
 // Main test runner
@@ -264,14 +271,32 @@ async function runTests() {
     
     const page = await context.newPage();
     
-    // Setup console logging
-    const consoleLogs = checkConsoleLogs(page);
+    // Setup console logging - PRIMA di caricare la pagina
+    const consoleLogs = { errors: [], warnings: [], info: [] };
+    
+    page.on('console', msg => {
+      const type = msg.type();
+      const text = msg.text();
+      
+      if (type === 'error') {
+        consoleLogs.errors.push(text);
+      } else if (type === 'warning') {
+        consoleLogs.warnings.push(text);
+      } else if (type === 'log' || type === 'info') {
+        consoleLogs.info.push(text);
+      }
+    });
+    
+    page.on('pageerror', error => {
+      consoleLogs.errors.push(`[PAGE ERROR] ${error.message}`);
+    });
     
     // Esegui i test
     const results = {
       pageLoad: await testPageLoad(page),
       uiElements: await testUIElements(page),
-      login: await testLogin(page)
+      login: await testLogin(page),
+      consoleLogs: await analyzeConsoleLogs(consoleLogs)
     };
     
     // Riassunto

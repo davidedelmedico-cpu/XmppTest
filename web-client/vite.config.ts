@@ -13,6 +13,10 @@ export default defineConfig({
   optimizeDeps: {
     include: ['events'],
   },
+  define: {
+    'global': 'globalThis',
+    'process.env': {}
+  },
   build: {
     rollupOptions: {
       output: {

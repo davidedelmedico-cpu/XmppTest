@@ -91,22 +91,23 @@ document.addEventListener('gestureend', (e) => {
 }, { passive: false })
 
 // Registrazione Service Worker per funzionalità offline
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('Service Worker registrato con successo:', registration.scope)
+// Disabilitato temporaneamente - sw.js non implementato
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker.register('/sw.js')
+//       .then((registration) => {
+//         console.log('Service Worker registrato con successo:', registration.scope)
         
-        // Controlla aggiornamenti ogni ora
-        setInterval(() => {
-          registration.update()
-        }, 3600000)
-      })
-      .catch((error) => {
-        console.log('Registrazione Service Worker fallita:', error)
-      })
-  })
-}
+//         // Controlla aggiornamenti ogni ora
+//         setInterval(() => {
+//           registration.update()
+//         }, 3600000)
+//       })
+//       .catch((error) => {
+//         console.log('Registrazione Service Worker fallita:', error)
+//       })
+//   })
+// }
 
 // Gestione orientamento schermo - previene rotazione su mobile se necessario
 if (typeof screen !== 'undefined' && 'orientation' in screen && screen.orientation && 'lock' in screen.orientation) {
