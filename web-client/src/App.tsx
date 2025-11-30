@@ -1,9 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
-import { ConnectionProvider, useConnection } from './contexts/ConnectionContext'
-import { ConversationsProvider } from './contexts/ConversationsContext'
-import { MessagingProvider } from './contexts/MessagingContext'
+import { XmppMediatorProvider, useXmpp } from './contexts/XmppMediator'
 import { AppInitializerWithCallback } from './components/AppInitializer'
 import { LoginPopup } from './components/LoginPopup'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -40,7 +37,7 @@ const PageLoader = () => (
 )
 
 function AppRoutes({ isInitializing }: { isInitializing: boolean }) {
-  const { isConnected } = useConnection()
+  const { isConnected } = useXmpp()
 
   return (
     <>
@@ -85,22 +82,16 @@ function App() {
     <ErrorBoundary>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       
-      {/* Context orchestration: Auth → Connection → Conversations → Messaging */}
-      <AuthProvider>
-        <ConnectionProvider>
-          <ConversationsProvider>
-            <MessagingProvider>
-              <HashRouter>
-                <AppInitializerWithCallback>
-                  {({ isInitializing }) => (
-                    <AppRoutes isInitializing={isInitializing} />
-                  )}
-                </AppInitializerWithCallback>
-              </HashRouter>
-            </MessagingProvider>
-          </ConversationsProvider>
-        </ConnectionProvider>
-      </AuthProvider>
+      {/* Mediator Pattern: Singolo context orchestrato */}
+      <XmppMediatorProvider>
+        <HashRouter>
+          <AppInitializerWithCallback>
+            {({ isInitializing }) => (
+              <AppRoutes isInitializing={isInitializing} />
+            )}
+          </AppInitializerWithCallback>
+        </HashRouter>
+      </XmppMediatorProvider>
     </ErrorBoundary>
   )
 }

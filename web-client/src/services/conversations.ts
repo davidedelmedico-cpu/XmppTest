@@ -1,12 +1,16 @@
 import type { Agent } from 'stanza'
 import type { MAMResult, ReceivedMessage } from 'stanza/protocol'
-import { saveConversations, updateConversation, saveMetadata, getConversations, type Conversation } from './conversations-db'
+import type { Conversation } from './conversations-db'
 import { normalizeJid } from '../utils/jid'
 import { PAGINATION } from '../config/constants'
+import { ConversationRepository, MetadataRepository } from './repositories'
 
 // Re-export per comodità
 export type { Conversation } from './conversations-db'
-export { getConversations } from './conversations-db'
+
+// Istanze Repository (usare dependency injection per testing)
+const conversationRepo = new ConversationRepository()
+const metadataRepo = new MetadataRepository()
 
 /**
  * Estrae il JID del contatto da un messaggio MAM
@@ -274,7 +278,7 @@ export async function loadAllConversations(client: Agent): Promise<Conversation[
   const { conversations: uniqueConversations, lastToken } = await downloadAllConversations(client)
 
   // Carica conversazioni esistenti dal database per mantenere unreadCount
-  const existingConversations = await getConversations()
+  const existingConversations = await conversationRepo.getAll()
   const existingMap = new Map(existingConversations.map((c) => [c.jid, c]))
 
   // Merge: mantieni unreadCount dalle conversazioni esistenti
@@ -286,11 +290,11 @@ export async function loadAllConversations(client: Agent): Promise<Conversation[
     }
   })
 
-  // Salva TUTTE le conversazioni nel database locale
-  await saveConversations(mergedConversations)
+  // Salva TUTTE le conversazioni nel database locale usando Repository
+  await conversationRepo.saveAll(mergedConversations)
 
-  // Aggiorna metadata
-  await saveMetadata({
+  // Aggiorna metadata usando Repository
+  await metadataRepo.save({
     lastSync: new Date(),
     lastRSMToken: lastToken,
   })
@@ -374,8 +378,8 @@ if (!contactJid) {
     }
   }
 
-  // Aggiorna conversazione
-  await updateConversation(contactJid, {
+  // Aggiorna conversazione usando Repository
+  await conversationRepo.update(contactJid, {
     jid: contactJid,
     lastMessage: {
       body: message.body || '',

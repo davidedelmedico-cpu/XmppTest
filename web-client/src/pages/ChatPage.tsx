@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useConnection } from '../contexts/ConnectionContext'
-import { useConversations } from '../contexts/ConversationsContext'
-import { useMessaging } from '../contexts/MessagingContext'
+import { useXmpp } from '../contexts/XmppMediator'
 import { useMessages } from '../hooks/useMessages'
 import { useChatScroll } from '../hooks/useChatScroll'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
@@ -22,9 +20,7 @@ import './ChatPage.css'
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
   const navigate = useNavigate()
-  const { client, isConnected, jid: myJid } = useConnection()
-  const { conversations, markAsRead, reloadFromDB } = useConversations()
-  const { subscribeToMessages } = useMessaging()
+  const { client, isConnected, jid: myJid, conversations, markAsRead, subscribeToMessages } = useXmpp()
   
   const jid = useMemo(() => encodedJid ? decodeURIComponent(encodedJid) : '', [encodedJid])
   const conversation = useMemo(() => conversations.find((c) => c.jid === jid), [conversations, jid])
@@ -97,9 +93,6 @@ export function ChatPage() {
           } else {
             // Ricarica messaggi dal database locale (ora sincronizzato)
             await reloadAllMessages()
-            
-            // Ricarica conversazioni dal database (con vCard aggiornato)
-            await reloadFromDB()
             
             // Scroll in fondo dopo il refresh
             setTimeout(() => {

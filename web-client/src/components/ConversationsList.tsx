@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useConversations } from '../contexts/ConversationsContext'
+import { useXmpp } from '../contexts/XmppMediator'
 import { truncateMessage, getInitials } from '../utils/message'
 import { formatConversationTimestamp } from '../utils/date'
 import { PULL_TO_REFRESH } from '../config/constants'
@@ -10,7 +10,7 @@ import './ConversationsList.css'
 
 export function ConversationsList() {
   const navigate = useNavigate()
-  const { conversations, isLoading, error, refreshAll } = useConversations()
+  const { conversations, isLoading, error, refresh: refreshAll } = useXmpp()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)

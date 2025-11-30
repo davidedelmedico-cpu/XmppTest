@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useConnection } from '../contexts/ConnectionContext'
+import { useXmpp } from '../contexts/XmppMediator'
 import { ConversationsList } from '../components/ConversationsList'
 import { NewConversationPopup } from '../components/NewConversationPopup'
 import './ConversationsPage.css'
 
 export function ConversationsPage() {
   const navigate = useNavigate()
-  const { isConnected, disconnect, jid, client } = useConnection()
+  const { isConnected, logout, jid, client } = useXmpp()
   const [showMenu, setShowMenu] = useState(false)
   const [showNewConversation, setShowNewConversation] = useState(false)
   const [userAvatar, setUserAvatar] = useState<{ data?: string; type?: string } | null>(null)
@@ -17,7 +17,7 @@ export function ConversationsPage() {
     setShowMenu(false)
     // Poi esegui la disconnessione dopo un breve delay per permettere l'animazione di chiusura
     setTimeout(() => {
-      disconnect()
+      logout()
     }, 200) // Delay per permettere l'animazione di chiusura del menu
   }
 

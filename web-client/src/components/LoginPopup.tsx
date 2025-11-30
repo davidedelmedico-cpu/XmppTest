@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useConnection } from '../contexts/ConnectionContext'
+import { useXmpp } from '../contexts/XmppMediator'
 import { isValidJid, parseJid } from '../utils/jid'
 import { TEXT_LIMITS } from '../config/constants'
 import './LoginPopup.css'
@@ -70,7 +70,7 @@ interface LoginPopupProps {
 }
 
 export function LoginPopup({ isInitializing }: LoginPopupProps) {
-  const { connect, jid } = useConnection()
+  const { login, jid } = useXmpp()
   const [loginForm, setLoginForm] = useState({
     jid: jid || '',  // Pre-compila con ultimo JID se disponibile
     password: ''
@@ -104,7 +104,7 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
     setLoginStatus({ state: 'pending', message: 'Connessione al server...' })
 
     try {
-      await connect(jidValidation.jid!, password)
+      await login(jidValidation.jid!, password)
       setLoginStatus({
         state: 'success',
         message: 'Accesso completato con successo!',
