@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
 import { loadMessagesForContact, sendMessage, getLocalMessages, reloadAllMessagesFromServer, type Message } from '../services/messages'
-import './ChatPage.css'
+import './ChatPage.css' 
 
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
