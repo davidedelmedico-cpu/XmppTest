@@ -51,8 +51,9 @@ Per iniziare rapidamente con Alfred:
 
 ### Implementazioni Completate
 - **[Login System](./implementation/login-system.md)** - Sistema di login con popup
-- **[Conversations Sync](./implementation/conversations-sync.md)** - Sincronizzazione conversazioni
-- **[Chat Interface](./implementation/chat-interface.md)** - Interfaccia chat
+- **[Sync System Complete](./implementation/sync-system-complete.md)** - Sistema di sincronizzazione completo
+- **[Scrollable Containers](./implementation/scrollable-containers.md)** - Classe utility per contenitori scrollabili
+  - **[Dettagli Tecnici](./implementation/scrollable-containers-implementation.md)** - Implementazione dettagliata
 
 ### Fix e Ottimizzazioni
 - **[Pull-to-Refresh Fix](./fixes/pull-to-refresh-fix.md)** - Correzione pull-to-refresh
@@ -62,9 +63,9 @@ Per iniziare rapidamente con Alfred:
 
 ## 🎨 Design
 
+- **[Design Guidelines](./design/README.md)** - Linee guida design generali
 - **[Brand Identity](./design/brand-identity.md)** - Identità visiva e colori
-- **[UI Guidelines](./design/ui-guidelines.md)** - Linee guida interfaccia
-- **[Accessibility](./design/accessibility.md)** - Accessibilità
+- **[Database Architecture](./design/database-architecture.md)** - Architettura database locale
 
 ---
 

@@ -330,7 +330,7 @@ export function ChatPage() {
 
       {/* Messages Area */}
       <main 
-        className="chat-page__messages"
+        className="chat-page__messages scrollable-container"
         ref={messagesContainerRef}
         onScroll={handleScroll}
         onTouchStart={handleTouchStart}

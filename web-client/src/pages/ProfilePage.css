@@ -59,10 +59,8 @@
 /* Main scrollabile */
 .profile-page__main {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   min-height: 0;
+  /* Scroll properties inherited from .scrollable-container */
 }
 
 /* Contenuto interno del main */

@@ -48,14 +48,7 @@
 
 .conversations-list__items {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  /* Blocca overscroll/pull-to-refresh nativo */
-  overscroll-behavior-y: none;
-  /* Permetti solo scroll verticale, blocca zoom */
-  touch-action: pan-y;
-  -ms-touch-action: pan-y;
+  /* Scroll properties inherited from .scrollable-container */
 }
 
 .conversation-item {

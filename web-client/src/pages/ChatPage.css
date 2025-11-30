@@ -153,8 +153,6 @@
   left: 0;
   right: 0;
   bottom: calc(68px + env(safe-area-inset-bottom, 0px)); /* Height of input area + padding + safe area */
-  overflow-y: auto;
-  overflow-x: hidden;
   padding: 1rem;
   background: #e5ddd5;
   background-image: 
@@ -165,11 +163,7 @@
       rgba(255, 255, 255, 0.03) 10px,
       rgba(255, 255, 255, 0.03) 20px
     );
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
-  /* Permetti solo scroll verticale, blocca zoom */
-  touch-action: pan-y;
-  -ms-touch-action: pan-y;
+  /* Scroll properties inherited from .scrollable-container */
 }
 
 .chat-page__messages::-webkit-scrollbar {

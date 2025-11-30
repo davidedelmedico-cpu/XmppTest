@@ -18,12 +18,20 @@ Documentazione dettagliata delle implementazioni completate.
   - Cache-first loading
   - IndexedDB integration
 
+### Utility Classes CSS
+- **[scrollable-containers.md](./scrollable-containers.md)** - Classe utility `.scrollable-container`
+  - Gestione scroll verticale con touch support
+  - Prevenzione pull-to-refresh nativo
+  - Supporto iOS smooth scrolling
+  - Documentazione dettagliata: [scrollable-containers-implementation.md](./scrollable-containers-implementation.md)
+
 ## Status Implementazioni
 
 | Feature | Status | Data | Documenti |
 |---------|--------|------|-----------|
 | Login System | ✅ Completato | 30 Nov 2025 | [login-system.md](./login-system.md) |
 | Sync System | ✅ Completato | 30 Nov 2025 | [sync-system-complete.md](./sync-system-complete.md) |
+| Scrollable Containers | ✅ Completato | 30 Nov 2025 | [scrollable-containers.md](./scrollable-containers.md) |
 | Pull-to-Refresh | ✅ Completato | 30 Nov 2025 | [../fixes/pull-to-refresh-fix.md](../fixes/pull-to-refresh-fix.md) |
 | Conversations List | ✅ Completato | Nov 2025 | - |
 | Chat Interface | ✅ Completato | Nov 2025 | - |

@@ -9,10 +9,15 @@
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 2rem;
   align-items: flex-start;
+}
+
+.hero > * {
+  flex: 1 1 280px;
+  min-width: 280px;
 }
 
 .hero__copy h1 {
@@ -99,9 +104,14 @@ input:focus {
 }
 
 .panels {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 2rem;
+}
+
+.panels > * {
+  flex: 1 1 320px;
+  min-width: 320px;
 }
 
 .auth-card__header p {
@@ -114,9 +124,14 @@ input:focus {
 }
 
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
+}
+
+.form-grid > * {
+  flex: 1 1 200px;
+  min-width: 200px;
 }
 
 .actions {
@@ -199,8 +214,8 @@ code {
 }
 
 @media (max-width: 600px) {
-  .form-grid {
-    grid-template-columns: 1fr;
+  .form-grid > * {
+    flex: 1 1 100%;
   }
 
   button {

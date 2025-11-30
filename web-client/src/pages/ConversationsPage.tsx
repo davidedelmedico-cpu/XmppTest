@@ -133,7 +133,7 @@ export function ConversationsPage() {
               </div>
             </div>
             
-            <nav className="conversations-page__sidebar-nav" aria-label="Navigazione principale">
+            <nav className="conversations-page__sidebar-nav scrollable-container" aria-label="Navigazione principale">
               <button 
                 className="conversations-page__sidebar-item conversations-page__sidebar-item--active"
                 aria-current="page"

@@ -174,7 +174,7 @@ export function ProfilePage() {
       </header>
 
       {/* Main scrollabile */}
-      <main className="profile-page__main">
+      <main className="profile-page__main scrollable-container">
         <div className="profile-page__content">
           {!isConnected ? (
             <div className="profile-page__error">

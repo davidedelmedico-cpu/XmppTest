@@ -188,7 +188,7 @@ export function ConversationsList() {
 
       <div
         ref={scrollContainerRef}
-        className="conversations-list__items"
+        className="conversations-list__items scrollable-container"
         role="list"
         aria-label="Lista conversazioni"
       >

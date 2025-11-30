@@ -51,6 +51,13 @@ Documentazione design e identità visiva di Alfred.
 - Flexbox per allineamento, distribuzione spazi e layout responsive
 - Grid solo quando necessario per layout complessi bidimensionali
 
+### 6. Utility Classes
+- **`.scrollable-container`** - Classe utility per contenitori scrollabili
+  - Gestisce scroll verticale con touch support
+  - Previene pull-to-refresh nativo
+  - Supporto iOS smooth scrolling
+  - Documentazione: [Scrollable Containers](../implementation/scrollable-containers.md)
+
 ## Colori
 
 ### Primari
@@ -144,4 +151,5 @@ small: 12px / 400
 ## Vedere Anche
 
 - [Implementazione Login](../implementation/login-system.md) - Esempio glassmorphism
+- [Scrollable Containers](../implementation/scrollable-containers.md) - Utility class per scroll
 - [Component Library](#) - Coming soon
