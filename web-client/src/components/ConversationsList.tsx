@@ -219,7 +219,7 @@ export function ConversationsList() {
                 }
               }}
               tabIndex={0}
-              aria-label={`Conversazione con ${conv.displayName || conv.jid.split('@')[0]}. ${conv.unreadCount > 0 ? `${conv.unreadCount} messaggi non letti.` : ''} Ultimo messaggio: ${conv.lastMessage.body}`}
+              aria-label={`Conversazione con ${conv.displayName || conv.jid}. ${conv.unreadCount > 0 ? `${conv.unreadCount} messaggi non letti.` : ''} Ultimo messaggio: ${conv.lastMessage.body}`}
             >
               <div className="conversation-item__avatar">
                 {getInitials(conv.jid, conv.displayName)}
@@ -227,7 +227,7 @@ export function ConversationsList() {
               <div className="conversation-item__content">
                 <div className="conversation-item__header">
                   <span className="conversation-item__name">
-                    {conv.displayName || conv.jid.split('@')[0]}
+                    {conv.displayName || conv.jid}
                   </span>
                   <time 
                     className="conversation-item__time"
