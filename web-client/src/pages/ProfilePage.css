@@ -54,6 +54,7 @@
 .profile-page__content {
   flex: 1;
   min-height: 0;
+  max-height: none !important;
   padding: 1.5rem 1rem;
 }
 
