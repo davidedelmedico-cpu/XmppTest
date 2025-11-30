@@ -175,7 +175,7 @@ export function ConversationsList() {
     longPressJidRef.current = null
   }
 
-  const handleConversationTouchMove = (e: React.TouchEvent) => {
+  const handleConversationTouchMove = () => {
     // Cancella long press se l'utente si muove
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current)
