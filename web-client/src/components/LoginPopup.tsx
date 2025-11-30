@@ -67,6 +67,8 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
   })
   const [loginStatus, setLoginStatus] = useState<FormStatus>(initialStatus)
 
+  console.log('[LoginPopup] Rendered with:', { isInitializing, jid })
+
   const handleLoginChange = (field: 'jid' | 'password') => (event: ChangeEvent<HTMLInputElement>) => {
     setLoginForm((prev) => ({ ...prev, [field]: event.target.value }))
     setLoginStatus(initialStatus)
