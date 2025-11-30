@@ -28,25 +28,21 @@ function generateTempId(): string {
 
 /**
  * Estrae timestamp da un messaggio MAM
+ * Il timestamp è già un oggetto Date fornito dalla libreria stanza
  */
 function extractTimestamp(msg: MAMResult): Date {
-  // Prova con il delay del messaggio interno
-  const message = msg.item.message
-  if (message?.delay) {
-    const delay = message.delay
-    if (typeof delay === 'object' && delay !== null) {
-      // Prova diversi formati di delay
-      const stamp = (delay as any).stamp || (delay as any).timestamp
-      if (stamp) {
-        const date = new Date(stamp)
-        if (!isNaN(date.getTime())) {
-          return date
-        }
-      }
-    }
+  // 1. Prova con il delay del wrapper Forward (MAM standard)
+  if (msg.item?.delay?.timestamp) {
+    return msg.item.delay.timestamp
+  }
+
+  // 2. Prova con il delay del messaggio interno (per messaggi offline)
+  if (msg.item?.message?.delay?.timestamp) {
+    return msg.item.message.delay.timestamp
   }
   
-  // Fallback: timestamp attuale (per messaggi in tempo reale)
+  // 3. Fallback: timestamp attuale (per messaggi senza delay)
+  console.warn('Nessun timestamp trovato nel messaggio MAM, uso timestamp corrente', msg)
   return new Date()
 }
 
@@ -370,20 +366,10 @@ export async function handleIncomingMessage(
   const from = message.from || ''
   const fromMe = from.startsWith(myBareJid)
 
-  // Estrai timestamp con fallback migliore
-  let timestamp = new Date()
-  
-  // 1. Prova con delay.stamp (per messaggi storici/offline)
-  const delay = message.delay
-  if (delay && typeof delay === 'object' && 'stamp' in delay) {
-    const stamp = (delay as { stamp?: string }).stamp
-    if (stamp) {
-      timestamp = new Date(stamp)
-    }
-  }
-  
-  // 2. Se non c'è delay, usa il timestamp attuale (messaggi in tempo reale)
-  // Il timestamp è comunque accurato perché il messaggio è appena arrivato
+  // Estrai timestamp
+  // 1. Se c'è un delay, usa il suo timestamp (già un oggetto Date)
+  // 2. Altrimenti usa timestamp attuale (messaggio in tempo reale)
+  const timestamp = message.delay?.timestamp || new Date()
 
   const incomingMessage: Message = {
     messageId: message.id || `incoming_${Date.now()}`,
