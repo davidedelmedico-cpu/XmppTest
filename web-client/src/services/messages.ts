@@ -157,8 +157,56 @@ export async function loadAllMessagesForContact(
 }
 
 /**
+ * Carica tutti i messaggi dal server senza salvarli nel DB
+ * (utile per reload completo dove poi sostituiamo tutto)
+ */
+async function loadAllMessagesFromServerOnly(
+  client: Agent,
+  contactJid: string
+): Promise<Message[]> {
+  const normalizedJid = normalizeJid(contactJid)
+  const allMessages: Message[] = []
+  let hasMore = true
+  let afterToken: string | undefined
+  const myJid = client.jid || ''
+
+  while (hasMore) {
+    try {
+      // Query MAM senza salvare nel DB
+      const result = await client.searchHistory({
+        with: normalizedJid,
+        paging: {
+          max: 100,
+          after: afterToken,
+        },
+      })
+
+      if (!result.results || result.results.length === 0) {
+        break
+      }
+
+      // Converti in Message ma NON salvare
+      const messages = result.results.map((msg) =>
+        mamResultToMessage(msg, contactJid, myJid)
+      )
+      
+      allMessages.push(...messages)
+
+      hasMore = !result.complete && !!result.paging?.last
+      afterToken = result.paging?.last
+    } catch (error) {
+      console.error('Errore nel caricamento batch messaggi:', error)
+      break
+    }
+  }
+
+  return allMessages
+}
+
+/**
  * Ricarica completamente tutto lo storico messaggi dal server
  * Cancella i messaggi locali e li sostituisce con quelli dal server
+ * Previene duplicati caricando prima senza salvare, poi cancellando e salvando tutto insieme
  */
 export async function reloadAllMessagesFromServer(
   client: Agent,
@@ -167,14 +215,15 @@ export async function reloadAllMessagesFromServer(
   const normalizedJid = normalizeJid(contactJid)
   
   try {
-    // 1. Carica tutto lo storico dal server
-    const serverMessages = await loadAllMessagesForContact(client, normalizedJid)
+    // 1. Carica tutto lo storico dal server SENZA salvare nel DB
+    //    (per evitare duplicati durante il processo)
+    const serverMessages = await loadAllMessagesFromServerOnly(client, normalizedJid)
     
     // 2. Cancella tutti i messaggi locali per questa conversazione
     const { clearMessagesForConversation } = await import('./conversations-db')
     await clearMessagesForConversation(normalizedJid)
     
-    // 3. Salva i nuovi messaggi dal server
+    // 3. Ora salva i nuovi messaggi dal server in un'unica operazione
     if (serverMessages.length > 0) {
       await saveMessages(serverMessages)
     }

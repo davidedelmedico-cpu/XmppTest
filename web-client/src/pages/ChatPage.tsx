@@ -29,10 +29,11 @@ export function ChatPage() {
   const lastScrollHeightRef = useRef(0)
   const isMountedRef = useRef(true) // Previene setState dopo unmount
   
-  // Pull to refresh refs
+  // Pull to refresh refs (ora dal basso verso l'alto)
   const pullStartY = useRef(0)
   const pullCurrentY = useRef(0)
   const isPulling = useRef(false)
+  const pullIndicatorRef = useRef<HTMLDivElement>(null)
 
   // Cleanup al unmount
   useEffect(() => {
@@ -201,8 +202,24 @@ export function ChatPage() {
 
   // Carica messaggi iniziali
   useEffect(() => {
-    if (!client || !isConnected || !jid) {
-      navigate('/conversations')
+    // Non fare nulla se non c'è il jid (non siamo in una chat)
+    if (!jid) {
+      return
+    }
+
+    // Se non siamo connessi e non stiamo inizializzando, vai alla lista
+    if (!client || !isConnected) {
+      // Ma non redirigere se stiamo ancora inizializzando la connessione
+      // (succede durante il refresh del browser)
+      if (!client && !isConnected) {
+        // Aspetta un po' prima di redirigere, per dare tempo alla connessione di stabilirsi
+        const timer = setTimeout(() => {
+          if (!client && !isConnected) {
+            navigate('/conversations')
+          }
+        }, 2000) // Aspetta 2 secondi
+        return () => clearTimeout(timer)
+      }
       return
     }
 
@@ -220,7 +237,7 @@ export function ChatPage() {
     }
   }, [messages])
 
-  // Ricarica completa messaggi dal server (pull to refresh)
+  // Ricarica completa messaggi dal server (pull up to refresh dal basso)
   const handlePullRefresh = async () => {
     if (!client || isPullRefreshing) return
     
@@ -228,13 +245,13 @@ export function ChatPage() {
     setError(null)
     
     try {
-      // Ricarica tutto dal server e sostituisci nel DB
+      // Ricarica tutto dal server - questa funzione ora gestisce correttamente i duplicati
       const serverMessages = await reloadAllMessagesFromServer(client, jid)
       
       if (isMountedRef.current) {
-        // Sostituisci completamente i messaggi visualizzati
+        // Sostituisci completamente i messaggi visualizzati con quelli dal server
         setMessages(serverMessages)
-        setHasMoreMessages(false) // Abbiamo già tutto
+        setHasMoreMessages(false) // Abbiamo già tutto dal server
         setFirstToken(undefined)
         
         // Scroll al bottom dopo il refresh
@@ -275,14 +292,15 @@ export function ChatPage() {
     }
   }
   
-  // Pull to refresh handlers
+  // Pull to refresh handlers (ora dal basso verso l'alto)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!messagesContainerRef.current || isPullRefreshing || isLoadingMore) return
     
-    const { scrollTop } = messagesContainerRef.current
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
     
-    // Inizia il pull solo se siamo in cima (scrollTop <= 0)
-    if (scrollTop <= 0) {
+    // Inizia il pull solo se siamo in fondo
+    if (isAtBottom) {
       isPulling.current = true
       pullStartY.current = e.touches[0].clientY
       pullCurrentY.current = pullStartY.current
@@ -290,37 +308,44 @@ export function ChatPage() {
   }
   
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPulling.current || !messagesContainerRef.current) return
+    if (!isPulling.current || !messagesContainerRef.current || !pullIndicatorRef.current) return
     
-    const { scrollTop } = messagesContainerRef.current
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
+    
     pullCurrentY.current = e.touches[0].clientY
-    const pullDistance = pullCurrentY.current - pullStartY.current
+    const pullDistance = pullStartY.current - pullCurrentY.current // Invertito: pull verso l'alto
     
-    // Solo se siamo in cima E tiriamo verso il basso
-    if (scrollTop <= 0 && pullDistance > 0) {
+    // Solo se siamo in fondo E tiriamo verso l'alto
+    if (isAtBottom && pullDistance > 0) {
       // Previeni lo scroll nativo per mostrare l'indicatore
       e.preventDefault()
       
-      // Aggiorna lo stile per mostrare l'indicatore di pull
-      if (messagesContainerRef.current) {
-        const translateY = Math.min(pullDistance * 0.5, 80) // Max 80px
-        messagesContainerRef.current.style.transform = `translateY(${translateY}px)`
-        messagesContainerRef.current.style.transition = 'none'
-      }
+      // Mostra l'indicatore di pull con opacità crescente
+      const opacity = Math.min(pullDistance / 80, 1)
+      const translateY = Math.min(pullDistance * 0.5, 60)
+      
+      pullIndicatorRef.current.style.opacity = opacity.toString()
+      pullIndicatorRef.current.style.transform = `translateY(-${translateY}px)`
     }
   }
   
   const handleTouchEnd = () => {
-    if (!isPulling.current || !messagesContainerRef.current) return
+    if (!isPulling.current || !pullIndicatorRef.current) return
     
-    const pullDistance = pullCurrentY.current - pullStartY.current
+    const pullDistance = pullStartY.current - pullCurrentY.current // Invertito
     const threshold = 80 // Distanza minima per attivare il refresh
     
-    // Reset transform con transizione
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.style.transition = 'transform 0.3s ease'
-      messagesContainerRef.current.style.transform = 'translateY(0)'
-    }
+    // Reset indicatore con transizione
+    pullIndicatorRef.current.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+    pullIndicatorRef.current.style.opacity = '0'
+    pullIndicatorRef.current.style.transform = 'translateY(0)'
+    
+    setTimeout(() => {
+      if (pullIndicatorRef.current) {
+        pullIndicatorRef.current.style.transition = 'none'
+      }
+    }, 300)
     
     // Se superato il threshold, attiva il refresh
     if (pullDistance > threshold) {
@@ -441,13 +466,6 @@ export function ChatPage() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {isPullRefreshing && (
-          <div className="chat-page__pull-refresh">
-            <div className="chat-page__spinner"></div>
-            <span>Ricaricamento storico...</span>
-          </div>
-        )}
-        
         {isLoadingMore && !isPullRefreshing && (
           <div className="chat-page__load-more">
             <div className="chat-page__spinner"></div>
@@ -505,6 +523,24 @@ export function ChatPage() {
             <div ref={messagesEndRef} />
           </>
         )}
+        
+        {/* Pull to refresh indicator (at bottom) */}
+        <div 
+          ref={pullIndicatorRef}
+          className="chat-page__pull-refresh-bottom"
+          style={{ opacity: 0 }}
+        >
+          {isPullRefreshing ? (
+            <>
+              <div className="chat-page__spinner"></div>
+              <span>Ricaricamento storico...</span>
+            </>
+          ) : (
+            <>
+              <span>↑ Rilascia per ricaricare</span>
+            </>
+          )}
+        </div>
       </main>
 
       {/* Input Area */}
