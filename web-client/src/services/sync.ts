@@ -269,17 +269,17 @@ class SyncManager {
       return { success: false, error: 'Messaggio o client non valido' }
     }
 
-    // Determina il JID del contatto
-    const myBareJid = normalizeJid(myJid)
-    const from = message.from || ''
-    const to = message.to || ''
-    const contactJid = from.startsWith(myBareJid) 
-      ? normalizeJid(to) 
-      : normalizeJid(from)
+  // Determina il JID del contatto
+  const myBareJid = normalizeJid(myJid)
+  const from = message.from || ''
+  const to = message.to || ''
+  const contactJid = from.startsWith(myBareJid) 
+    ? normalizeJid(to) 
+    : normalizeJid(from)
 
-    if (!contactJid || contactJid === myBareJid) {
-      return { success: false, error: 'JID contatto non valido' }
-    }
+  if (!contactJid) {
+    return { success: false, error: 'JID contatto non valido' }
+  }
 
     // Sincronizza la conversazione completa dal server
     // Questo garantisce che abbiamo tutti i messaggi aggiornati
