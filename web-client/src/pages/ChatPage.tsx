@@ -232,8 +232,12 @@ export function ChatPage() {
 
   // Memoizza il rendering dei messaggi per performance
   const renderedMessages = useMemo(() => {
+    const isSelfChat = jid === myJid
+    
     return messages.map((message, index) => {
-      const isMe = message.from === 'me'
+      // In self-chat: indici pari = sent, dispari = received
+      // In chat normale: usa message.from
+      const isMe = isSelfChat ? (index % 2 === 0) : (message.from === 'me')
       const showDate = index === 0 || !isSameDay(messages[index - 1].timestamp, message.timestamp)
 
       return (
@@ -263,7 +267,7 @@ export function ChatPage() {
         </div>
       )
     })
-  }, [messages])
+  }, [messages, jid, myJid])
 
   return (
     <div id="main-content" className="chat-page" role="main" tabIndex={-1}>
