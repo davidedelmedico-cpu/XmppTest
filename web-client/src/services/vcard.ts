@@ -3,11 +3,6 @@ import { normalizeJid } from '../utils/jid'
 import { saveVCard, getVCard as getCachedVCardFromDB, type VCardCache } from './conversations-db'
 
 /**
- * Tempo di cache per i vCard (24 ore)
- */
-const VCARD_CACHE_TIME = 24 * 60 * 60 * 1000
-
-/**
  * Interfaccia per vCard da stanza.js
  */
 interface VCardFromStanza {
@@ -73,59 +68,60 @@ export async function fetchVCardFromServer(client: Agent, jid: string): Promise<
 }
 
 /**
- * Recupera un vCard dalla cache locale o dal server se non presente/scaduto
+ * Recupera un vCard dalla cache locale o dal server se non presente
+ * La cache è permanente e viene aggiornata solo su richiesta esplicita (forceRefresh)
  */
 export async function getVCard(client: Agent, jid: string, forceRefresh = false): Promise<VCardCache | null> {
   const normalizedJid = normalizeJid(jid)
 
-  // Se non è forzato il refresh, prova a recuperare dalla cache
+  // Se non è forzato il refresh, usa sempre la cache se presente
   if (!forceRefresh) {
     const cached = await getCachedVCardFromDB(normalizedJid)
-    
     if (cached) {
-      // Verifica se la cache è ancora valida
-      const now = new Date()
-      const cacheAge = now.getTime() - cached.lastUpdated.getTime()
-      
-      if (cacheAge < VCARD_CACHE_TIME) {
-        return cached
-      }
+      return cached
     }
   }
 
-  // Cache non presente o scaduta, scarica dal server
+  // Cache non presente o refresh forzato, scarica dal server
   return await fetchVCardFromServer(client, normalizedJid)
 }
 
 /**
  * Recupera vCard per multipli JID in batch
- * Ottimizzato per caricare solo quelli non in cache o scaduti
+ * Ottimizzato per caricare solo quelli non in cache
+ * 
+ * @param client - Client XMPP
+ * @param jids - Lista di JID da processare
+ * @param forceRefresh - Se true, ricarica tutti i vCard dal server ignorando la cache
  */
-export async function getVCardsForJids(client: Agent, jids: string[]): Promise<Map<string, VCardCache>> {
+export async function getVCardsForJids(
+  client: Agent, 
+  jids: string[], 
+  forceRefresh = false
+): Promise<Map<string, VCardCache>> {
   const vcardMap = new Map<string, VCardCache>()
   const jidsToFetch: string[] = []
 
-  // Prima controlla la cache per tutti i JID
-  for (const jid of jids) {
-    const normalizedJid = normalizeJid(jid)
-    const cached = await getCachedVCardFromDB(normalizedJid)
+  if (forceRefresh) {
+    // Refresh forzato: scarica tutti
+    jidsToFetch.push(...jids.map(jid => normalizeJid(jid)))
+  } else {
+    // Prima controlla la cache per tutti i JID
+    for (const jid of jids) {
+      const normalizedJid = normalizeJid(jid)
+      const cached = await getCachedVCardFromDB(normalizedJid)
 
-    if (cached) {
-      const now = new Date()
-      const cacheAge = now.getTime() - cached.lastUpdated.getTime()
-
-      if (cacheAge < VCARD_CACHE_TIME) {
-        // Cache valida
+      if (cached) {
+        // Cache presente, usala
         vcardMap.set(normalizedJid, cached)
-        continue
+      } else {
+        // Cache non presente, scarica dal server
+        jidsToFetch.push(normalizedJid)
       }
     }
-
-    // Cache non presente o scaduta
-    jidsToFetch.push(normalizedJid)
   }
 
-  // Scarica i vCard mancanti dal server (in parallelo ma con limite)
+  // Scarica i vCard mancanti/da aggiornare dal server (in parallelo ma con limite)
   if (jidsToFetch.length > 0) {
     // Limita a 5 richieste parallele per evitare di sovraccaricare il server
     const batchSize = 5

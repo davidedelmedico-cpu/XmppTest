@@ -262,10 +262,15 @@ export async function loadAllConversations(client: Agent): Promise<Conversation[
 
 /**
  * Arricchisce conversazioni con dati dal roster (nomi contatti) e vCard (avatar e nomi pubblici)
+ * 
+ * @param client - Client XMPP
+ * @param conversations - Lista conversazioni da arricchire
+ * @param forceRefreshVCards - Se true, ricarica i vCard dal server ignorando la cache
  */
 export async function enrichWithRoster(
   client: Agent,
-  conversations: Conversation[]
+  conversations: Conversation[],
+  forceRefreshVCards = false
 ): Promise<Conversation[]> {
   try {
     // 1. Recupera roster (nomi personalizzati dall'utente)
@@ -279,7 +284,7 @@ export async function enrichWithRoster(
     // 2. Recupera vCard per tutti i contatti (in batch)
     const { getVCardsForJids, getDisplayName } = await import('./vcard')
     const jids = conversations.map(conv => conv.jid)
-    const vcardMap = await getVCardsForJids(client, jids)
+    const vcardMap = await getVCardsForJids(client, jids, forceRefreshVCards)
 
     // 3. Arricchisci le conversazioni con roster e vCard
     return conversations.map((conv) => {

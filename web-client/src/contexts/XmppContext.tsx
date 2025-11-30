@@ -247,8 +247,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         lastRSMToken: lastToken,
       })
       
-      // Arricchisci con dati dal roster e aggiorna lo stato
-      const enriched = await enrichWithRoster(client, downloadedConversations)
+      // 4. Arricchisci con dati dal roster e vCard (forza refresh dei vCard)
+      const enriched = await enrichWithRoster(client, downloadedConversations, true)
       setConversations(enriched)
     } catch (err) {
       console.error('Errore nel refresh conversazioni:', err)

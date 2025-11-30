@@ -9,6 +9,7 @@ import './App.css'
 // Lazy load delle pagine per code splitting
 const ConversationsPage = lazy(() => import('./pages/ConversationsPage').then(module => ({ default: module.ConversationsPage })))
 const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(module => ({ default: module.ProfilePage })))
 
 // Loading component per il lazy loading
 const PageLoader = () => (
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/conversations" element={<ConversationsPage />} />
           <Route path="/chat/:jid" element={<ChatPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/" element={<Navigate to="/conversations" replace />} />
         </Routes>
       </Suspense>
