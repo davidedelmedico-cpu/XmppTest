@@ -35,17 +35,6 @@ function extractTimestamp(msg: MAMResult): Date {
 }
 
 /**
- * Verifica se un messaggio MAM è un messaggio di chat valido (con body)
- * Filtra messaggi non testuali come ping, visualizzazioni, ecc.
- */
-function isValidChatMessage(msg: MAMResult): boolean {
-  const type = msg.item.message?.type
-  const body = msg.item.message?.body
-  // Solo messaggi di tipo chat (o senza tipo) con body non vuoto
-  return (!type || type === 'chat') && body && body.trim().length > 0
-}
-
-/**
  * Converte un MAMResult in Message
  */
 function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: string): Message {
