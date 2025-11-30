@@ -52,10 +52,12 @@ body {
 #root {
   width: 100%;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* Disabilita scroll globale - solo i contenitori interni possono scrollare */
   overscroll-behavior-y: none;
   overscroll-behavior-x: none;
+  /* Disabilita lo zoom/pinch-zoom anche qui */
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
 }
 
 a {
@@ -69,6 +71,20 @@ textarea {
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
+}
+
+/* Contenitori scrollabili - solo questi possono scrollare */
+.chat-page__messages,
+.conversations-list__items,
+.conversations-page__sidebar-nav {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  /* Permetti solo scroll verticale, blocca zoom */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 /* Animazione per il loader */
