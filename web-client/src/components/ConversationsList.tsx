@@ -167,9 +167,6 @@ export function ConversationsList() {
 
   return (
     <div ref={wrapperRef} className="conversations-list">
-      <div className="conversations-list__header">
-        <h2>Chat</h2>
-      </div>
 
       {/* Pull-to-refresh indicator - mostrato solo durante pull o refresh */}
       {(pullDistance > 5 || isRefreshing) && (
