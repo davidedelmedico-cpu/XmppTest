@@ -226,56 +226,6 @@
   }
 }
 
-/* Context menu */
-.context-menu {
-  background: rgba(16, 24, 40, 0.98);
-  border: 1px solid rgba(99, 113, 137, 0.5);
-  border-radius: 0.75rem;
-  padding: 0.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 9998;
-  min-width: 180px;
-  animation: slideUp 0.2s ease-out;
-}
-
-.context-menu-item {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: transparent;
-  color: #d5def5;
-  font-size: 0.95rem;
-  text-align: left;
-  cursor: pointer;
-  border-radius: 0.5rem;
-  transition: background-color 0.15s ease;
-}
-
-.context-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.context-menu-item--danger {
-  color: #fecaca;
-}
-
-.context-menu-item--danger:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .conversation-item {
