@@ -8,23 +8,12 @@ import {
   updateMessageId,
   type Message,
 } from './conversations-db'
+import { normalizeJid } from '../utils/jid'
+import { generateTempId } from '../utils/message'
+import { PAGINATION } from '../config/constants'
 
 // Re-export per comodità
 export type { Message, MessageStatus } from './conversations-db'
-
-/**
- * Normalizza un JID rimuovendo la resource
- */
-function normalizeJid(jid: string): string {
-  return jid.split('/')[0].toLowerCase()
-}
-
-/**
- * Genera un ID temporaneo univoco per messaggi ottimistici
- */
-function generateTempId(): string {
-  return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-}
 
 /**
  * Estrae timestamp da un messaggio MAM
@@ -65,8 +54,27 @@ function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: stri
 }
 
 /**
- * Carica messaggi per un contatto specifico dal server (MAM)
- * Con supporto per paginazione usando RSM tokens
+ * Carica messaggi per un contatto specifico dal server usando MAM (Message Archive Management)
+ * Con supporto per paginazione usando RSM (Result Set Management) tokens
+ * 
+ * @param client - Il client XMPP connesso
+ * @param contactJid - Il JID del contatto per cui caricare i messaggi
+ * @param options - Opzioni di paginazione
+ * @param options.maxResults - Numero massimo di messaggi da caricare (default: 50)
+ * @param options.afterToken - Token RSM per caricare messaggi DOPO questo punto (più recenti)
+ * @param options.beforeToken - Token RSM per caricare messaggi PRIMA di questo punto (più vecchi)
+ * @returns Promise con i messaggi caricati, token RSM e flag di completezza
+ * 
+ * @example
+ * ```ts
+ * // Carica i primi 50 messaggi
+ * const result = await loadMessagesForContact(client, 'user@example.com')
+ * 
+ * // Carica messaggi più vecchi usando il token
+ * const older = await loadMessagesForContact(client, 'user@example.com', {
+ *   beforeToken: result.firstToken
+ * })
+ * ```
  */
 export async function loadMessagesForContact(
   client: Agent,
@@ -82,7 +90,7 @@ export async function loadMessagesForContact(
   lastToken?: string   // Token dell'ultimo messaggio (per paginare avanti)
   complete: boolean 
 }> {
-  const { maxResults = 50, afterToken, beforeToken } = options || {}
+  const { maxResults = PAGINATION.DEFAULT_MESSAGE_LIMIT, afterToken, beforeToken } = options || {}
 
   try {
     // Query MAM filtrata per contatto specifico
@@ -139,7 +147,7 @@ export async function loadAllMessagesForContact(
 
   while (hasMore) {
     const result = await loadMessagesForContact(client, contactJid, {
-      maxResults: 100,
+      maxResults: PAGINATION.DEFAULT_CONVERSATION_LIMIT,
       afterToken,
     })
 
@@ -172,7 +180,7 @@ async function loadAllMessagesFromServerOnly(
       const result = await client.searchHistory({
         with: normalizedJid,
         paging: {
-          max: 100,
+          max: PAGINATION.DEFAULT_CONVERSATION_LIMIT,
           after: afterToken,
         },
       })

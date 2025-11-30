@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
+import { truncateMessage, getInitials } from '../utils/message'
+import { formatConversationTimestamp } from '../utils/date'
+import { PULL_TO_REFRESH } from '../config/constants'
 import './ConversationsList.css'
+
+// formatConversationTimestamp è usato alla riga 234 nel rendering del timestamp
 
 export function ConversationsList() {
   const navigate = useNavigate()
@@ -78,7 +83,7 @@ export function ConversationsList() {
       const finalDistance = currentPullDistance.current
       
       // Usa i ref per controllare lo stato attuale senza dipendenze
-      if (finalDistance > 60 && !isRefreshingRef.current && !isLoadingRef.current) {
+      if (finalDistance > PULL_TO_REFRESH.THRESHOLD && !isRefreshingRef.current && !isLoadingRef.current) {
         // Trigger refresh se trascinato abbastanza
         setIsRefreshing(true)
         window.dispatchEvent(new CustomEvent('refresh-start'))
@@ -89,7 +94,7 @@ export function ConversationsList() {
               setPullDistance(0)
               currentPullDistance.current = 0
               window.dispatchEvent(new CustomEvent('refresh-end'))
-            }, 300)
+            }, PULL_TO_REFRESH.ANIMATION_DURATION)
           })
           .catch(() => {
             setIsRefreshing(false)
@@ -122,40 +127,6 @@ export function ConversationsList() {
     }
   }, [])
 
-  const formatTimestamp = (date: Date): string => {
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-    if (days === 0) {
-      // Oggi: mostra solo l'ora
-      return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    } else if (days === 1) {
-      return 'Ieri'
-    } else if (days < 7) {
-      return `${days}g fa`
-    } else {
-      return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
-    }
-  }
-
-  const truncateMessage = (body: string, maxLength = 50): string => {
-    if (body.length <= maxLength) {
-      return body
-    }
-    return body.substring(0, maxLength).trim() + '...'
-  }
-
-  const getInitials = (jid: string, displayName?: string): string => {
-    if (displayName) {
-      const parts = displayName.trim().split(' ')
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      }
-      return displayName[0]?.toUpperCase() || '?'
-    }
-    return jid.split('@')[0][0]?.toUpperCase() || '?'
-  }
 
   const handleConversationClick = (jid: string) => {
     navigate(`/chat/${encodeURIComponent(jid)}`)
@@ -175,9 +146,12 @@ export function ConversationsList() {
     <div ref={wrapperRef} className="conversations-list">
 
       {/* Pull-to-refresh indicator - mostrato solo durante pull o refresh */}
-      {(pullDistance > 5 || isRefreshing) && (
+        {(pullDistance > 5 || isRefreshing) && (
         <div
           className="conversations-list__pull-refresh"
+          role="status"
+          aria-live="polite"
+          aria-label={isRefreshing ? 'Aggiornamento in corso' : pullDistance > PULL_TO_REFRESH.THRESHOLD ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}
           style={{
             transform: `translateY(${60 + (isRefreshing ? 50 : pullDistance)}px)`,
             opacity: isRefreshing ? 1 : Math.min(pullDistance / 60, 1),
@@ -185,7 +159,7 @@ export function ConversationsList() {
         >
           {isRefreshing ? (
             <>
-              <div className="conversations-list__spinner"></div>
+              <div className="conversations-list__spinner" aria-hidden="true"></div>
               <span>Aggiornamento...</span>
             </>
           ) : (
@@ -197,6 +171,7 @@ export function ConversationsList() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
+                aria-hidden="true"
                 style={{
                   transform: pullDistance > 60 ? 'rotate(180deg)' : 'rotate(0deg)',
                   transition: 'transform 0.2s',
@@ -205,7 +180,7 @@ export function ConversationsList() {
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                 <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
               </svg>
-              <span>{pullDistance > 60 ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}</span>
+              <span>{pullDistance > PULL_TO_REFRESH.THRESHOLD ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}</span>
             </>
           )}
         </div>
@@ -214,18 +189,20 @@ export function ConversationsList() {
       <div
         ref={scrollContainerRef}
         className="conversations-list__items"
+        role="list"
+        aria-label="Lista conversazioni"
         style={{
-          transform: `translateY(${Math.min(pullDistance, 100)}px)`,
-          transition: pullDistance === 0 && !isRefreshing ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+          transform: `translateY(${Math.min(pullDistance, PULL_TO_REFRESH.MAX_DISTANCE)}px)`,
+          transition: pullDistance === 0 && !isRefreshing ? `transform ${PULL_TO_REFRESH.ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
         }}
       >
         {isLoading && conversations.length === 0 ? (
-          <div className="conversations-list__loading">
-            <div className="conversations-list__spinner"></div>
+          <div className="conversations-list__loading" role="status" aria-live="polite">
+            <div className="conversations-list__spinner" aria-hidden="true"></div>
             <p>Caricamento conversazioni...</p>
           </div>
         ) : conversations.length === 0 ? (
-          <div className="conversations-list__empty">
+          <div className="conversations-list__empty" role="status">
             <p>Nessuna conversazione</p>
           </div>
         ) : (
@@ -233,7 +210,16 @@ export function ConversationsList() {
             <div 
               key={conv.jid} 
               className="conversation-item"
+              role="listitem"
               onClick={() => handleConversationClick(conv.jid)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleConversationClick(conv.jid)
+                }
+              }}
+              tabIndex={0}
+              aria-label={`Conversazione con ${conv.displayName || conv.jid.split('@')[0]}. ${conv.unreadCount > 0 ? `${conv.unreadCount} messaggi non letti.` : ''} Ultimo messaggio: ${conv.lastMessage.body}`}
             >
               <div className="conversation-item__avatar">
                 {getInitials(conv.jid, conv.displayName)}
@@ -243,19 +229,27 @@ export function ConversationsList() {
                   <span className="conversation-item__name">
                     {conv.displayName || conv.jid.split('@')[0]}
                   </span>
-                  <span className="conversation-item__time">
-                    {formatTimestamp(conv.lastMessage.timestamp)}
-                  </span>
+                  <time 
+                    className="conversation-item__time"
+                    dateTime={conv.lastMessage.timestamp.toISOString()}
+                  >
+                    {formatConversationTimestamp(conv.lastMessage.timestamp)}
+                  </time>
                 </div>
                 <div className="conversation-item__preview">
-                  <span className={`conversation-item__sender ${conv.lastMessage.from}`}>
+                  <span className={`conversation-item__sender ${conv.lastMessage.from}`} aria-hidden="true">
                     {conv.lastMessage.from === 'me' ? 'Tu: ' : ''}
                   </span>
                   <span className="conversation-item__body">
-                    {truncateMessage(conv.lastMessage.body)}
+                    {truncateMessage(conv.lastMessage.body, 50)}
                   </span>
                   {conv.unreadCount > 0 && (
-                    <span className="conversation-item__unread">{conv.unreadCount}</span>
+                    <span 
+                      className="conversation-item__unread"
+                      aria-label={`${conv.unreadCount} messaggi non letti`}
+                    >
+                      {conv.unreadCount}
+                    </span>
                   )}
                 </div>
               </div>

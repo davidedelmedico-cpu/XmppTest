@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useXmpp } from '../contexts/XmppContext'
+import { isValidJid, parseJid } from '../utils/jid'
+import { TEXT_LIMITS } from '../config/constants'
 import './LoginPopup.css'
 
 type AsyncState = 'idle' | 'pending' | 'success' | 'error'
@@ -15,6 +17,9 @@ const initialStatus: FormStatus = { state: 'idle' }
 
 /**
  * Valida e normalizza un username completo (formato: username@server.com)
+ * 
+ * @param input - Il JID da validare e normalizzare
+ * @returns Oggetto con validità, JID normalizzato e eventuale errore
  */
 const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string; error?: string } => {
   const trimmed = input.trim()
@@ -23,34 +28,39 @@ const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string;
     return { valid: false, error: 'Inserisci il tuo username completo.' }
   }
 
-  if (!trimmed.includes('@')) {
-    return { valid: false, error: 'Inserisci il tuo username completo nel formato: username@server.com' }
-  }
-
-  const parts = trimmed.split('@')
-  if (parts.length !== 2) {
-    return { valid: false, error: 'Formato non valido. Usa: username@server.com' }
-  }
-
-  const [local, domainPart] = parts
-  const [domain, resource] = domainPart.split('/')
-
-  if (local && local.length > 0) {
-    if (local.length > 1023) {
+  if (!isValidJid(trimmed)) {
+    if (!trimmed.includes('@')) {
+      return { valid: false, error: 'Inserisci il tuo username completo nel formato: username@server.com' }
+    }
+    
+    const parts = trimmed.split('@')
+    if (parts.length !== 2) {
+      return { valid: false, error: 'Formato non valido. Usa: username@server.com' }
+    }
+    
+    const [local, domainPart] = parts
+    const [domain] = domainPart.split('/')
+    
+    if (local && local.length > TEXT_LIMITS.MAX_JID_LENGTH) {
       return { valid: false, error: 'Lo username è troppo lungo.' }
     }
+    
+    if (!domain || domain.length === 0) {
+      return { valid: false, error: 'Inserisci anche il server (esempio: username@server.com).' }
+    }
+    
+    if (domain.length > TEXT_LIMITS.MAX_JID_LENGTH) {
+      return { valid: false, error: 'Il nome del server è troppo lungo.' }
+    }
+    
+    return { valid: false, error: 'Formato JID non valido.' }
   }
 
-  if (!domain || domain.length === 0) {
-    return { valid: false, error: 'Inserisci anche il server (esempio: username@server.com).' }
-  }
-
-  if (domain.length > 1023) {
-    return { valid: false, error: 'Il nome del server è troppo lungo.' }
-  }
-
-  const normalizedDomain = domain.toLowerCase()
-  const normalizedJid = local ? `${local}@${normalizedDomain}${resource ? `/${resource}` : ''}` : normalizedDomain
+  // JID valido, normalizzalo
+  const parsed = parseJid(trimmed)
+  const normalizedJid = parsed.username 
+    ? `${parsed.username}@${parsed.domain}${parsed.resource ? `/${parsed.resource}` : ''}`
+    : parsed.domain
 
   return { valid: true, jid: normalizedJid }
 }
@@ -110,23 +120,29 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
   }
 
   return (
-    <div className="login-popup-overlay">
+    <div 
+      className="login-popup-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-title"
+      aria-describedby="login-description"
+    >
       <div className="login-popup-modal">
         {isInitializing ? (
           // Modalità 1: Caricamento durante auto-login
-          <div className="login-popup-loading">
-            <div className="login-popup-spinner"></div>
+          <div className="login-popup-loading" role="status" aria-live="polite">
+            <div className="login-popup-spinner" aria-hidden="true"></div>
             <p className="login-popup-loading-text">Connessione in corso...</p>
           </div>
         ) : (
           // Modalità 2: Form di login
           <>
             <div className="login-popup-header">
-              <h2>Connessione richiesta</h2>
-              <p>Effettua il login per continuare</p>
+              <h2 id="login-title">Connessione richiesta</h2>
+              <p id="login-description">Effettua il login per continuare</p>
             </div>
             
-            <form className="login-popup-form" onSubmit={handleLoginSubmit}>
+            <form className="login-popup-form" onSubmit={handleLoginSubmit} noValidate>
               <label className="login-popup-field">
                 <span>Username</span>
                 <input
@@ -136,6 +152,9 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
                   onChange={handleLoginChange('jid')}
                   placeholder="mario@conversations.im"
                   disabled={loginStatus.state === 'pending'}
+                  aria-required="true"
+                  aria-invalid={loginStatus.state === 'error' && !loginForm.jid}
+                  aria-describedby={loginStatus.state === 'error' ? 'login-error' : undefined}
                 />
               </label>
               
@@ -147,6 +166,9 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
                   value={loginForm.password}
                   onChange={handleLoginChange('password')}
                   disabled={loginStatus.state === 'pending'}
+                  aria-required="true"
+                  aria-invalid={loginStatus.state === 'error' && !loginForm.password}
+                  aria-describedby={loginStatus.state === 'error' ? 'login-error' : undefined}
                 />
               </label>
               
@@ -154,6 +176,7 @@ export function LoginPopup({ isInitializing }: LoginPopupProps) {
                 type="submit" 
                 className="login-popup-button"
                 disabled={loginStatus.state === 'pending'}
+                aria-label={loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collega all\'account XMPP'}
               >
                 {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
               </button>
@@ -173,7 +196,12 @@ const StatusBanner = ({ status }: { status: FormStatus }) => {
   }
 
   return (
-    <div className={`login-popup-status login-popup-status--${status.state}`}>
+    <div 
+      className={`login-popup-status login-popup-status--${status.state}`}
+      role={status.state === 'error' ? 'alert' : 'status'}
+      aria-live={status.state === 'error' ? 'assertive' : 'polite'}
+      id="login-error"
+    >
       <p>{status.message}</p>
       {status.details && <p className="login-popup-status-details">{status.details}</p>}
     </div>

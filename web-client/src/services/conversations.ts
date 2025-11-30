@@ -1,17 +1,12 @@
 import type { Agent } from 'stanza'
 import type { MAMResult, ReceivedMessage } from 'stanza/protocol'
 import { saveConversations, updateConversation, saveMetadata, getConversations, type Conversation } from './conversations-db'
+import { normalizeJid } from '../utils/jid'
+import { PAGINATION } from '../config/constants'
 
 // Re-export per comodità
 export type { Conversation } from './conversations-db'
 export { getConversations } from './conversations-db'
-
-/**
- * Normalizza un JID rimuovendo la resource
- */
-function normalizeJid(jid: string): string {
-  return jid.split('/')[0].toLowerCase()
-}
 
 /**
  * Estrae il JID del contatto da un messaggio MAM
@@ -96,6 +91,17 @@ function groupMessagesByContact(messages: MAMResult[], myJid: string): Map<strin
 /**
  * Carica conversazioni dal server usando MAM
  */
+/**
+ * Carica conversazioni dal server usando MAM (Message Archive Management)
+ * 
+ * @param client - Il client XMPP connesso
+ * @param options - Opzioni di query
+ * @param options.startDate - Data di inizio per il range di ricerca
+ * @param options.endDate - Data di fine per il range di ricerca
+ * @param options.maxResults - Numero massimo di risultati per pagina
+ * @param options.afterToken - Token RSM per paginazione
+ * @returns Promise con le conversazioni trovate, token per paginazione e flag di completezza
+ */
 export async function loadConversationsFromServer(
   client: Agent,
   options: {
@@ -105,7 +111,7 @@ export async function loadConversationsFromServer(
     afterToken?: string
   } = {}
 ): Promise<{ conversations: Conversation[]; nextToken?: string; complete: boolean }> {
-  const { startDate, endDate, maxResults = 100, afterToken } = options
+  const { startDate, endDate, maxResults = PAGINATION.DEFAULT_CONVERSATION_LIMIT, afterToken } = options
 
   // Query MAM
   const result = await client.searchHistory({
@@ -173,7 +179,7 @@ export async function loadAllConversations(client: Agent): Promise<Conversation[
   // Carica tutte le pagine fino a quando non ci sono più risultati
   while (hasMore) {
     const result = await loadConversationsFromServer(client, {
-      maxResults: 100, // Carica 100 messaggi per pagina
+      maxResults: PAGINATION.DEFAULT_CONVERSATION_LIMIT,
       afterToken: lastToken,
     })
 
