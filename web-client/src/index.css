@@ -34,6 +34,13 @@ body {
     radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.3), transparent 40%),
     #050b14;
   color: inherit;
+  /* Disabilita la selezione del testo per un'esperienza app-like */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Disabilita anche il touch callout su iOS */
+  -webkit-touch-callout: none;
 }
 
 #root {
@@ -47,6 +54,15 @@ body {
 
 a {
   color: inherit;
+}
+
+/* Permetti la selezione del testo solo negli input e textarea */
+input,
+textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 /* Animazione per il loader */
