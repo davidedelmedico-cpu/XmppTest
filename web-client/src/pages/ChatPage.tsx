@@ -80,38 +80,33 @@ export function ChatPage() {
     handleTouchEnd,
   } = usePullToRefresh({
     onRefresh: async () => {
-      // Ricarica messaggi dal server
-      await reloadAllMessages()
-      
-      // Aggiorna vCard del contatto (forza refresh) e ricarica conversazioni
+      // Usa la nuova funzione di sincronizzazione completa per questa conversazione
+      // Questa scarica TUTTI i messaggi + vCard del contatto in modo ottimizzato
       if (client && jid) {
         try {
-          const { getVCard, getDisplayName } = await import('../services/vcard')
-          const { updateConversation } = await import('../services/conversations-db')
+          const { syncSingleConversationComplete } = await import('../services/sync')
+          const result = await syncSingleConversationComplete(client, jid)
           
-          // Scarica il vCard aggiornato dal server
-          const vcard = await getVCard(client, jid, true) // forceRefresh = true
-          
-          // Aggiorna la conversazione nel database con i nuovi dati vCard
-          if (vcard) {
-            const displayName = getDisplayName(jid, conversation?.displayName, vcard)
-            await updateConversation(jid, {
-              displayName,
-              avatarData: vcard.photoData,
-              avatarType: vcard.photoType,
-            })
+          if (!result.success) {
+            console.error('Errore nella sincronizzazione:', result.error)
+            setError(result.error || 'Errore nella sincronizzazione')
+          } else {
+            // Ricarica messaggi dal database locale (ora sincronizzato)
+            await reloadAllMessages()
             
-            // Ricarica le conversazioni dal database per aggiornare la UI
+            // Ricarica conversazioni dal database (con vCard aggiornato)
             await reloadConversationsFromDB()
+            
+            // Scroll in fondo dopo il refresh
+            setTimeout(() => {
+              scrollToBottom('smooth')
+            }, 100)
           }
         } catch (error) {
-          console.error('Errore nel refresh vCard durante pull-to-refresh:', error)
+          console.error('Errore durante la sincronizzazione completa:', error)
+          setError(error instanceof Error ? error.message : 'Errore durante la sincronizzazione')
         }
       }
-      
-      setTimeout(() => {
-        scrollToBottom('smooth')
-      }, 100)
     },
     enabled: !isLoadingMore,
   })

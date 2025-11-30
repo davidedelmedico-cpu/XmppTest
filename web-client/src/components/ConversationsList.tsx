@@ -10,7 +10,7 @@ import './ConversationsList.css'
 
 export function ConversationsList() {
   const navigate = useNavigate()
-  const { conversations, isLoading, error, refreshConversations } = useXmpp()
+  const { conversations, isLoading, error, refreshAllConversations } = useXmpp()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -22,11 +22,11 @@ export function ConversationsList() {
   const isDragging = useRef<boolean>(false)
   const currentPullDistance = useRef<number>(0)
   
-  // Mantieni riferimento aggiornato a refreshConversations senza causare re-render
-  const refreshConversationsRef = useRef(refreshConversations)
+  // Mantieni riferimento aggiornato a refreshAllConversations senza causare re-render
+  const refreshAllConversationsRef = useRef(refreshAllConversations)
   useEffect(() => {
-    refreshConversationsRef.current = refreshConversations
-  }, [refreshConversations])
+    refreshAllConversationsRef.current = refreshAllConversations
+  }, [refreshAllConversations])
   
   // Mantieni riferimento aggiornato allo stato di caricamento
   const isLoadingRef = useRef(isLoading)
@@ -87,7 +87,7 @@ export function ConversationsList() {
         // Trigger refresh se trascinato abbastanza
         setIsRefreshing(true)
         window.dispatchEvent(new CustomEvent('refresh-start'))
-        refreshConversationsRef.current()
+        refreshAllConversationsRef.current()
           .then(() => {
             setTimeout(() => {
               setIsRefreshing(false)

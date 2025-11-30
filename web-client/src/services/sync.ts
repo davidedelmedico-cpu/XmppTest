@@ -336,3 +336,147 @@ export async function handleIncomingMessageAndSync(
   syncManager.setClient(client)
   return await syncManager.handleIncomingMessage(message, myJid)
 }
+
+// ============================================================================
+// NUOVE FUNZIONI DI SINCRONIZZAZIONE COMPLETA
+// ============================================================================
+
+/**
+ * Sincronizza TUTTE le conversazioni in modo completo:
+ * - Scarica tutti i messaggi di tutte le conversazioni dal server
+ * - Salva tutti i messaggi nel database locale
+ * - Scarica tutti i vCard in batch
+ * - Aggiorna le conversazioni con i dati vCard
+ * 
+ * Usato nel pull-to-refresh della LISTA conversazioni
+ * 
+ * @param client - Client XMPP connesso
+ * @returns Risultato della sincronizzazione con statistiche
+ */
+export async function syncAllConversationsComplete(client: Agent): Promise<SyncResult> {
+  if (!client) {
+    return { success: false, error: 'Client XMPP non disponibile' }
+  }
+
+  try {
+    // 1. Scarica tutte le conversazioni dal server CON salvataggio di tutti i messaggi
+    const { downloadAllConversations } = await import('./conversations')
+    const { conversations, lastToken } = await downloadAllConversations(client, true) // true = saveMessages
+    
+    // 2. Aggiorna conversazioni nel database
+    const { saveConversations, saveMetadata } = await import('./conversations-db')
+    await saveConversations(conversations)
+    
+    // Aggiorna metadata
+    await saveMetadata({
+      lastSync: new Date(),
+      lastRSMToken: lastToken,
+    })
+    
+    // 3. Scarica tutti i vCard in batch per tutti i contatti
+    const { getVCardsForJids } = await import('./vcard')
+    const jids = conversations.map(conv => conv.jid)
+    
+    if (jids.length > 0) {
+      // Scarica tutti i vCard con forceRefresh=true per avere dati freschi
+      await getVCardsForJids(client, jids, true)
+      
+      // 4. Arricchisci conversazioni con dati vCard
+      const { enrichWithRoster } = await import('./conversations')
+      const enrichedConversations = await enrichWithRoster(client, conversations, true)
+      
+      // 5. Salva conversazioni arricchite
+      await saveConversations(enrichedConversations)
+    }
+    
+    return {
+      success: true,
+      syncedData: {
+        conversationCount: conversations.length,
+        // messageCount non disponibile direttamente, ma possiamo stimarlo
+      }
+    }
+  } catch (error) {
+    console.error('Errore nella sincronizzazione completa di tutte le conversazioni:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Errore nella sincronizzazione completa'
+    }
+  }
+}
+
+/**
+ * Sincronizza UNA SOLA conversazione in modo completo:
+ * - Scarica tutti i messaggi di quella conversazione
+ * - Salva nel database locale
+ * - Scarica il vCard del contatto
+ * - Aggiorna la conversazione con i dati vCard
+ * 
+ * Usato nel pull-to-refresh di una CHAT specifica
+ * 
+ * @param client - Client XMPP connesso
+ * @param contactJid - JID del contatto da sincronizzare
+ * @returns Risultato della sincronizzazione
+ */
+export async function syncSingleConversationComplete(
+  client: Agent,
+  contactJid: string
+): Promise<SyncResult> {
+  if (!client) {
+    return { success: false, error: 'Client XMPP non disponibile' }
+  }
+
+  const normalizedJid = normalizeJid(contactJid)
+
+  try {
+    // 1. Sincronizza tutti i messaggi della conversazione
+    // (questa funzione già svuota e ricarica tutto dal server)
+    const { reloadAllMessagesFromServer } = await import('./messages')
+    const messages = await reloadAllMessagesFromServer(client, normalizedJid)
+    
+    // 2. Aggiorna la conversazione con l'ultimo messaggio
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      await updateConversation(normalizedJid, {
+        jid: normalizedJid,
+        lastMessage: {
+          body: lastMessage.body,
+          timestamp: lastMessage.timestamp,
+          from: lastMessage.from,
+          messageId: lastMessage.messageId,
+        },
+        updatedAt: lastMessage.timestamp,
+      })
+    }
+    
+    // 3. Scarica il vCard del contatto con forceRefresh=true
+    const { getVCard } = await import('./vcard')
+    const vcard = await getVCard(client, normalizedJid, true)
+    
+    // 4. Aggiorna la conversazione con i dati vCard
+    if (vcard) {
+      const { getDisplayName } = await import('./vcard')
+      const displayName = getDisplayName(normalizedJid, undefined, vcard)
+      
+      await updateConversation(normalizedJid, {
+        displayName,
+        avatarData: vcard.photoData,
+        avatarType: vcard.photoType,
+      })
+    }
+    
+    return {
+      success: true,
+      syncedData: {
+        conversationJid: normalizedJid,
+        messageCount: messages.length,
+      }
+    }
+  } catch (error) {
+    console.error('Errore nella sincronizzazione completa della conversazione:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Errore nella sincronizzazione completa'
+    }
+  }
+}

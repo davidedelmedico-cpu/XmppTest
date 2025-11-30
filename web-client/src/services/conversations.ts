@@ -112,6 +112,7 @@ for (const msg of chatMessages) {
  * @param options.endDate - Data di fine per il range di ricerca
  * @param options.maxResults - Numero massimo di risultati per pagina
  * @param options.afterToken - Token RSM per paginazione
+ * @param options.saveMessages - Se true, salva TUTTI i messaggi nel database (default: false)
  * @returns Promise con le conversazioni trovate, token per paginazione e flag di completezza
  */
 export async function loadConversationsFromServer(
@@ -121,9 +122,10 @@ export async function loadConversationsFromServer(
     endDate?: Date
     maxResults?: number
     afterToken?: string
+    saveMessages?: boolean
   } = {}
 ): Promise<{ conversations: Conversation[]; nextToken?: string; complete: boolean }> {
-  const { startDate, endDate, maxResults = PAGINATION.DEFAULT_CONVERSATION_LIMIT, afterToken } = options
+  const { startDate, endDate, maxResults = PAGINATION.DEFAULT_CONVERSATION_LIMIT, afterToken, saveMessages = false } = options
 
   // Query MAM
   const result = await client.searchHistory({
@@ -140,6 +142,37 @@ export async function loadConversationsFromServer(
       conversations: [],
       nextToken: result.paging?.last,
       complete: result.complete ?? true,
+    }
+  }
+
+  // Se richiesto, salva TUTTI i messaggi nel database
+  if (saveMessages) {
+    const myJid = client.jid || ''
+    const myBareJid = normalizeJid(myJid)
+    
+    // Importa saveMessages dal database
+    const { saveMessages: saveMessagesToDB } = await import('./conversations-db')
+    
+    // Converti MAMResult[] in Message[]
+    const messages = result.results
+      .filter(msg => msg.item.message?.body) // Solo messaggi con body
+      .map(msg => {
+        const from = msg.item.message?.from || ''
+        const contactJid = extractContactJid(msg, myJid)
+        
+        return {
+          messageId: msg.id || `mam_${Date.now()}_${Math.random()}`,
+          conversationJid: contactJid,
+          body: extractMessageBody(msg),
+          timestamp: extractTimestamp(msg),
+          from: from.startsWith(myBareJid) ? 'me' as const : 'them' as const,
+          status: 'sent' as const,
+        }
+      })
+    
+    // Salva tutti i messaggi nel database
+    if (messages.length > 0) {
+      await saveMessagesToDB(messages)
     }
   }
 
@@ -181,10 +214,15 @@ export async function loadConversationsFromServer(
 }
 
 /**
- * Scarica TUTTE le conversazioni dal server senza salvare nel database
- * Utile per refresh completo dove si vuole scaricare prima, poi svuotare e salvare
+ * Scarica TUTTE le conversazioni dal server
+ * @param client - Client XMPP connesso
+ * @param saveMessages - Se true, salva TUTTI i messaggi nel database durante lo scaricamento (default: false)
+ * @returns Conversazioni scaricate e ultimo token RSM
  */
-export async function downloadAllConversations(client: Agent): Promise<{ conversations: Conversation[]; lastToken?: string }> {
+export async function downloadAllConversations(
+  client: Agent,
+  saveMessages = false
+): Promise<{ conversations: Conversation[]; lastToken?: string }> {
   let allConversations: Conversation[] = []
   let hasMore = true
   let lastToken: string | undefined
@@ -194,6 +232,7 @@ export async function downloadAllConversations(client: Agent): Promise<{ convers
     const result = await loadConversationsFromServer(client, {
       maxResults: PAGINATION.DEFAULT_CONVERSATION_LIMIT,
       afterToken: lastToken,
+      saveMessages, // Passa il parametro saveMessages
     })
 
     // Raggruppa e aggiungi alle conversazioni totali

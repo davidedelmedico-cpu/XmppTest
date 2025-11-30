@@ -5,10 +5,9 @@ import type { ReceivedMessage } from 'stanza/protocol'
 import { login, type XmppResult } from '../services/xmpp'
 import {
   loadAllConversations,
-  downloadAllConversations,
   enrichWithRoster,
 } from '../services/conversations'
-import { getConversations, type Conversation, updateConversation, clearConversations, saveConversations, saveMetadata } from '../services/conversations-db'
+import { getConversations, type Conversation, updateConversation } from '../services/conversations-db'
 import { saveCredentials, loadCredentials, clearCredentials } from '../services/auth-storage'
 import { handleIncomingMessageAndSync } from '../services/sync'
 
@@ -25,7 +24,8 @@ interface XmppContextType {
   logoutIntentional: boolean
   connect: (jid: string, password: string) => Promise<void>
   disconnect: () => void
-  refreshConversations: () => Promise<void>
+  refreshAllConversations: () => Promise<void>  // Rinominato da refreshConversations
+  refreshSingleConversation: (jid: string) => Promise<void>  // NUOVO
   reloadConversationsFromDB: () => Promise<void>
   subscribeToMessages: (callback: MessageCallback) => () => void
   markConversationAsRead: (jid: string) => Promise<void>
@@ -226,38 +226,56 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     setLogoutIntentional(false)
   }
 
-  const refreshConversations = async () => {
+  const refreshAllConversations = async () => {
     if (!client || !isConnected) {
       return
     }
 
     setIsLoading(true)
     try {
-      // 1. Prima scarica tutte le conversazioni dal server (senza salvare)
-      const { conversations: downloadedConversations, lastToken } = await downloadAllConversations(client)
+      // Usa la nuova funzione di sincronizzazione completa
+      // Questa scarica TUTTO: conversazioni, messaggi e vCard
+      const { syncAllConversationsComplete } = await import('../services/sync')
+      const result = await syncAllConversationsComplete(client)
       
-      // 2. Poi svuota il database delle conversazioni
-      await clearConversations()
+      if (!result.success) {
+        throw new Error(result.error || 'Errore nella sincronizzazione')
+      }
       
-      // 3. Infine salva le conversazioni scaricate nel database
-      await saveConversations(downloadedConversations)
-      
-      // Aggiorna metadata
-      await saveMetadata({
-        lastSync: new Date(),
-        lastRSMToken: lastToken,
-      })
-      
-      // 4. Arricchisci con dati dal roster e vCard (forza refresh dei vCard)
-      const enriched = await enrichWithRoster(client, downloadedConversations, true)
-      setConversations(enriched)
+      // Ricarica conversazioni dal database (ora complete con messaggi e vCard)
+      const updated = await getConversations()
+      setConversations(updated)
     } catch (err) {
-      console.error('Errore nel refresh conversazioni:', err)
+      console.error('Errore nel refresh completo conversazioni:', err)
       setError(err instanceof Error ? err.message : 'Errore nel refresh')
     } finally {
       setIsLoading(false)
     }
   }
+
+  const refreshSingleConversation = useCallback(async (contactJid: string) => {
+    if (!client || !isConnected) {
+      return
+    }
+
+    try {
+      // Usa la nuova funzione di sincronizzazione completa per singola conversazione
+      // Questa scarica messaggi e vCard solo per quel contatto
+      const { syncSingleConversationComplete } = await import('../services/sync')
+      const result = await syncSingleConversationComplete(client, contactJid)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Errore nella sincronizzazione')
+      }
+      
+      // Ricarica conversazioni dal database (la conversazione aggiornata sarà inclusa)
+      const updated = await getConversations()
+      setConversations(updated)
+    } catch (err) {
+      console.error('Errore nel refresh conversazione singola:', err)
+      setError(err instanceof Error ? err.message : 'Errore nel refresh')
+    }
+  }, [client, isConnected])
 
   const subscribeToMessages = useCallback((callback: MessageCallback) => {
     messageCallbacks.current.add(callback)
@@ -300,7 +318,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         logoutIntentional,
         connect,
         disconnect,
-        refreshConversations,
+        refreshAllConversations,
+        refreshSingleConversation,
         reloadConversationsFromDB,
         subscribeToMessages,
         markConversationAsRead,
