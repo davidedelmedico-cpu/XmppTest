@@ -48,3 +48,10 @@ body {
 a {
   color: inherit;
 }
+
+/* Animazione per il loader */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
