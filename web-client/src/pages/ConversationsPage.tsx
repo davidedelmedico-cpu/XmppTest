@@ -1,11 +1,15 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
 import { ConversationsList } from '../components/ConversationsList'
+import { NewConversationPopup } from '../components/NewConversationPopup'
 import './ConversationsPage.css'
 
 export function ConversationsPage() {
+  const navigate = useNavigate()
   const { isConnected, disconnect, jid } = useXmpp()
   const [showMenu, setShowMenu] = useState(false)
+  const [showNewConversation, setShowNewConversation] = useState(false)
 
   const handleLogout = () => {
     // Chiudi prima il menu
@@ -14,6 +18,12 @@ export function ConversationsPage() {
     setTimeout(() => {
       disconnect()
     }, 200) // Delay per permettere l'animazione di chiusura del menu
+  }
+
+  const handleNewConversation = (jid: string) => {
+    setShowNewConversation(false)
+    // Naviga alla chat con il JID inserito
+    navigate(`/chat/${encodeURIComponent(jid)}`)
   }
 
   return (
@@ -129,6 +139,28 @@ export function ConversationsPage() {
       <main id="main-content" className="conversations-page__main" role="main" tabIndex={-1}>
         <ConversationsList />
       </main>
+
+      {/* Floating Action Button */}
+      <button
+        className="conversations-page__fab"
+        onClick={() => setShowNewConversation(true)}
+        aria-label="Nuova conversazione"
+        title="Nuova conversazione"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <line x1="9" y1="10" x2="15" y2="10"></line>
+          <line x1="12" y1="7" x2="12" y2="13"></line>
+        </svg>
+      </button>
+
+      {/* Popup nuova conversazione */}
+      {showNewConversation && (
+        <NewConversationPopup
+          onClose={() => setShowNewConversation(false)}
+          onSubmit={handleNewConversation}
+        />
+      )}
     </div>
   )
 }
