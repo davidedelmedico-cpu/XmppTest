@@ -175,6 +175,21 @@
   font-size: 0.875rem;
 }
 
+.chat-page__pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #5682a3;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(86, 130, 163, 0.05);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  animation: slideDown 0.3s ease-out;
+}
+
 .chat-page__spinner {
   width: 20px;
   height: 20px;

@@ -147,6 +147,36 @@ export async function loadAllMessagesForContact(
 }
 
 /**
+ * Ricarica completamente tutto lo storico messaggi dal server
+ * Cancella i messaggi locali e li sostituisce con quelli dal server
+ */
+export async function reloadAllMessagesFromServer(
+  client: Agent,
+  contactJid: string
+): Promise<Message[]> {
+  const normalizedJid = normalizeJid(contactJid)
+  
+  try {
+    // 1. Carica tutto lo storico dal server
+    const serverMessages = await loadAllMessagesForContact(client, normalizedJid)
+    
+    // 2. Cancella tutti i messaggi locali per questa conversazione
+    const { clearMessagesForConversation } = await import('./conversations-db')
+    await clearMessagesForConversation(normalizedJid)
+    
+    // 3. Salva i nuovi messaggi dal server
+    if (serverMessages.length > 0) {
+      await saveMessages(serverMessages)
+    }
+    
+    return serverMessages
+  } catch (error) {
+    console.error('Errore nel reload completo messaggi:', error)
+    throw new Error('Impossibile ricaricare i messaggi dal server')
+  }
+}
+
+/**
  * Invia un messaggio con optimistic update
  */
 export async function sendMessage(
