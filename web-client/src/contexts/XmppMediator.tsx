@@ -66,6 +66,9 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
 
   // Message callbacks
   const messageCallbacks = useRef<Set<MessageCallback>>(new Set())
+  
+  // Flag per auto-login (esegue solo una volta)
+  const autoLoginExecuted = useRef(false)
 
   // Inizializzazione State Machine listener
   useEffect(() => {
@@ -183,8 +186,11 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Auto-login con credenziali salvate (dopo definizione di login)
+  // Auto-login con credenziali salvate (esegue solo una volta)
   useEffect(() => {
+    if (autoLoginExecuted.current) return
+    autoLoginExecuted.current = true
+    
     const saved = loadCredentials()
     console.log('[XmppMediator] Auto-login check:', { hasSaved: !!saved })
     if (saved) {
