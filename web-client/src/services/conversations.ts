@@ -237,16 +237,17 @@ export async function enrichWithRoster(
   try {
     const rosterResult = await client.getRoster()
     // RosterResult ha una proprietà 'roster' che contiene gli items
-    const rosterItems = (rosterResult as any).roster?.items || []
+    const rosterData = rosterResult as unknown as { roster?: { items?: Array<{ jid: string; name?: string }> } }
+    const rosterItems = rosterData.roster?.items || []
     const rosterMap = new Map(
-      rosterItems.map((item: any) => [normalizeJid(item.jid), item])
+      rosterItems.map((item) => [normalizeJid(item.jid), item])
     )
 
     return conversations.map((conv) => {
       const rosterItem = rosterMap.get(conv.jid)
       return {
         ...conv,
-        displayName: (rosterItem as any)?.name || conv.displayName,
+        displayName: rosterItem?.name || conv.displayName,
       }
     })
   } catch (error) {
