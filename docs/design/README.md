@@ -12,6 +12,12 @@ Documentazione design e identità visiva di Alfred.
   - Typography
   - Linee guida utilizzo
 
+### Architettura
+- **[database-architecture.md](./database-architecture.md)** - Scelta architetturale del database locale
+  - Database locale come cache sincronizzata dal server
+  - Principi di sincronizzazione
+  - Pattern corretti e scorretti
+
 ## Principi Design
 
 ### 1. Minimalismo Funzionale
