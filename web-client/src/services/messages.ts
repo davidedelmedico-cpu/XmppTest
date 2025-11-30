@@ -270,20 +270,25 @@ export async function handleIncomingMessage(
   message: ReceivedMessage,
   myJid: string,
   contactJid: string
-): Promise<void> {
+): Promise<Message> {
   const myBareJid = normalizeJid(myJid)
   const from = message.from || ''
   const fromMe = from.startsWith(myBareJid)
 
-  // Estrai timestamp
-  const delay = message.delay
+  // Estrai timestamp con fallback migliore
   let timestamp = new Date()
+  
+  // 1. Prova con delay.stamp (per messaggi storici/offline)
+  const delay = message.delay
   if (delay && typeof delay === 'object' && 'stamp' in delay) {
     const stamp = (delay as { stamp?: string }).stamp
     if (stamp) {
       timestamp = new Date(stamp)
     }
   }
+  
+  // 2. Se non c'è delay, usa il timestamp attuale (messaggi in tempo reale)
+  // Il timestamp è comunque accurato perché il messaggio è appena arrivato
 
   const incomingMessage: Message = {
     messageId: message.id || `incoming_${Date.now()}`,
@@ -296,4 +301,7 @@ export async function handleIncomingMessage(
 
   // Salva nel database (de-duplicazione automatica)
   await addMessage(incomingMessage)
+  
+  // Ritorna il messaggio per permettere update ottimistici
+  return incomingMessage
 }

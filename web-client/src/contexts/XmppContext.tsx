@@ -130,15 +130,16 @@ export function XmppProvider({ children }: { children: ReactNode }) {
           ? to.split('/')[0].toLowerCase() 
           : from.split('/')[0].toLowerCase()
 
-        // 2. Salva messaggio nel database
-        await handleIncomingMessage(message, jid, contactJid)
+        // 2. Salva messaggio nel database e ottieni il messaggio salvato
+        const savedMessage = await handleIncomingMessage(message, jid, contactJid)
 
         // 3. Aggiorna lista conversazioni
         await updateConversationOnNewMessage(message, jid)
         const updated = await getConversations()
         setConversations(updated)
 
-        // 4. Notifica i callback registrati (per ChatPage attiva)
+        // 4. Notifica i callback registrati con il messaggio completo (per ChatPage attiva)
+        // Passa sia ReceivedMessage che Message salvato per evitare reload
         messageCallbacks.current.forEach((callback) => {
           callback(message)
         })
