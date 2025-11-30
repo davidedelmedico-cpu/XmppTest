@@ -128,8 +128,34 @@ export function ConversationsList() {
   }, [])
 
 
-  const handleConversationClick = (jid: string) => {
-    navigate(`/chat/${encodeURIComponent(jid)}`)
+  const handleConversationClick = (jid: string, event?: React.MouseEvent | React.KeyboardEvent) => {
+    // Previeni la navigazione se siamo in modalità pull-to-refresh
+    if (isDragging.current || isRefreshing) {
+      console.log('ConversationsList: Click ignorato durante pull-to-refresh')
+      if (event) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+      return
+    }
+    
+    // Debug: verifica che il JID sia presente
+    if (!jid || jid.trim() === '') {
+      console.error('ConversationsList: JID mancante o vuoto!', { jid, conversations })
+      return
+    }
+    
+    const encodedJid = encodeURIComponent(jid)
+    const targetUrl = `/chat/${encodedJid}`
+    console.log('ConversationsList: Navigazione a conversazione', { 
+      originalJid: jid, 
+      encodedJid, 
+      targetUrl,
+      currentUrl: window.location.href,
+      hashRouter: window.location.hash
+    })
+    
+    navigate(targetUrl)
   }
 
   if (error && conversations.length === 0) {
@@ -206,16 +232,27 @@ export function ConversationsList() {
             <p>Nessuna conversazione</p>
           </div>
         ) : (
-          conversations.map((conv) => (
+          conversations.map((conv) => {
+            // Debug: verifica che la conversazione abbia un JID valido
+            if (!conv.jid || conv.jid.trim() === '') {
+              console.error('ConversationsList: Conversazione senza JID valido!', { conv })
+              return null
+            }
+            
+            return (
             <div 
               key={conv.jid} 
               className="conversation-item"
               role="listitem"
-              onClick={() => handleConversationClick(conv.jid)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleConversationClick(conv.jid, e)
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  handleConversationClick(conv.jid)
+                  e.stopPropagation()
+                  handleConversationClick(conv.jid, e)
                 }
               }}
               tabIndex={0}
@@ -254,7 +291,8 @@ export function ConversationsList() {
                 </div>
               </div>
             </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

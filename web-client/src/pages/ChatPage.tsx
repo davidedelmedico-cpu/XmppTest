@@ -21,8 +21,30 @@ export function ChatPage() {
   const navigate = useNavigate()
   const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, jid: myJid } = useXmpp()
   
-  const jid = useMemo(() => encodedJid ? decodeURIComponent(encodedJid) : '', [encodedJid])
-  const conversation = useMemo(() => conversations.find((c) => c.jid === jid), [conversations, jid])
+  const jid = useMemo(() => {
+    if (!encodedJid) {
+      console.error('ChatPage: JID mancante nei parametri URL!', { 
+        encodedJid, 
+        currentUrl: window.location.href 
+      })
+      return ''
+    }
+    const decoded = decodeURIComponent(encodedJid)
+    console.log('ChatPage: JID decodificato', { encodedJid, decoded, currentUrl: window.location.href })
+    return decoded
+  }, [encodedJid])
+  
+  const conversation = useMemo(() => {
+    const found = conversations.find((c) => c.jid === jid)
+    console.log('ChatPage: Conversazione trovata', { 
+      jid, 
+      found: !!found, 
+      conversationJid: found?.jid,
+      totalConversations: conversations.length,
+      conversationJids: conversations.map(c => c.jid)
+    })
+    return found
+  }, [conversations, jid])
   
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -157,6 +179,14 @@ export function ChatPage() {
       markConversationAsRead(jid)
     }
   }, [jid, client, isConnected, markConversationAsRead])
+
+  // Redirect se JID mancante
+  useEffect(() => {
+    if (!encodedJid || encodedJid.trim() === '') {
+      console.error('ChatPage: JID mancante, redirect a /conversations', { encodedJid, currentUrl: window.location.href })
+      navigate('/conversations', { replace: true })
+    }
+  }, [encodedJid, navigate])
 
   // Auto-focus su input quando la chat si carica
   useEffect(() => {

@@ -137,6 +137,12 @@ export async function loadConversationsFromServer(
   // Converti in conversazioni
   const conversations: Conversation[] = []
   for (const [contactJid, msg] of lastMessages.entries()) {
+    // Verifica che il contactJid sia valido
+    if (!contactJid || contactJid.trim() === '') {
+      console.warn('loadConversationsFromServer: Skipping conversazione con JID vuoto', { contactJid, msg })
+      continue
+    }
+    
     // Correggo extractSender per usare myJid corretto
     const myBareJid = normalizeJid(client.jid || '')
     const from = msg.item.message?.from || ''
