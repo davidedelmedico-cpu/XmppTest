@@ -122,20 +122,20 @@ export async function loadMessagesForContact(
       }
     }
 
-    // Filtra solo messaggi di chat validi (con body)
-    const validMessages = result.results.filter(isValidChatMessage)
-
-    // Converti MAMResult in Message
+    // Converti TUTTI i messaggi MAMResult in Message (inclusi ping, token, visualizzazioni, ecc.)
     const myJid = client.jid || ''
-    const messages = validMessages.map((msg) =>
+    const allMessages = result.results.map((msg) =>
       mamResultToMessage(msg, contactJid, myJid)
     )
 
-    // Salva nel database locale
-    await saveMessages(messages)
+    // Salva TUTTI i messaggi nel database (potrebbero servire per altre funzionalità)
+    await saveMessages(allMessages)
+
+    // Filtra solo messaggi di chat validi (con body) per la visualizzazione nella UI
+    const validMessages = allMessages.filter(msg => msg.body && msg.body.trim().length > 0)
 
     return {
-      messages,
+      messages: validMessages,
       firstToken: result.paging?.first,  // Token per paginare verso messaggi più vecchi
       lastToken: result.paging?.last,    // Token per paginare verso messaggi più recenti
       complete: result.complete ?? true,
@@ -202,11 +202,9 @@ export async function downloadAllMessagesFromServer(
         break
       }
 
-      // Filtra solo messaggi di chat validi (con body)
-      const validMessages = result.results.filter(isValidChatMessage)
-
-      // Converti in Message ma NON salvare
-      const messages = validMessages.map((msg) =>
+      // Converti TUTTI i messaggi in Message (inclusi ping, token, visualizzazioni, ecc.)
+      // NON filtrare qui - salviamo tutto nel database
+      const messages = result.results.map((msg) =>
         mamResultToMessage(msg, contactJid, myJid)
       )
       
