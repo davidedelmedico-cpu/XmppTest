@@ -12,7 +12,6 @@ export interface Conversation {
   }
   unreadCount: number
   updatedAt: Date
-  hidden?: boolean // Flag per nascondere la conversazione dalla lista principale
 }
 
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'failed'
@@ -31,10 +30,7 @@ interface ConversationsDB extends DBSchema {
   conversations: {
     key: string // jid
     value: Conversation
-    indexes: { 
-      'by-updatedAt': Date
-      'by-hidden': boolean | undefined // Index per filtrare conversazioni nascoste
-    }
+    indexes: { 'by-updatedAt': Date }
   }
   messages: {
     key: string // messageId
@@ -63,8 +59,8 @@ export async function getDB(): Promise<IDBPDatabase<ConversationsDB>> {
     return dbInstance
   }
 
-  dbInstance = await openDB<ConversationsDB>('conversations-db', 3, {
-    upgrade(db, oldVersion, _newVersion, transaction) {
+  dbInstance = await openDB<ConversationsDB>('conversations-db', 2, {
+    upgrade(db, oldVersion) {
       // Versione 1: Store originali
       if (oldVersion < 1) {
         // Store per conversazioni
@@ -86,12 +82,6 @@ export async function getDB(): Promise<IDBPDatabase<ConversationsDB>> {
         messagesStore.createIndex('by-timestamp', 'timestamp')
         messagesStore.createIndex('by-conversation-timestamp', ['conversationJid', 'timestamp'])
         messagesStore.createIndex('by-tempId', 'tempId', { unique: false })
-      }
-
-      // Versione 3: Aggiungi index per conversazioni nascoste
-      if (oldVersion < 3) {
-        const conversationStore = transaction.objectStore('conversations')
-        conversationStore.createIndex('by-hidden', 'hidden', { unique: false })
       }
     },
   })
