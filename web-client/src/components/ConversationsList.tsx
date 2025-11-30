@@ -6,6 +6,8 @@ import { formatConversationTimestamp } from '../utils/date'
 import { PULL_TO_REFRESH } from '../config/constants'
 import './ConversationsList.css'
 
+// formatConversationTimestamp è usato alla riga 234 nel rendering del timestamp
+
 export function ConversationsList() {
   const navigate = useNavigate()
   const { conversations, isLoading, error, refreshConversations } = useXmpp()
