@@ -1,10 +1,10 @@
-# XmppTest
+# Alfred
 
-Web client XMPP per messaggistica istantanea.
+**Alfred** - Web client XMPP per messaggistica istantanea.
 
 ## 🎨 Brand Identity
 
-Il colore istituzionale ufficiale dell'applicazione è **#2D2926** (Dark Charcoal).
+**Alfred** utilizza come colore istituzionale ufficiale il **#2D2926** (Dark Charcoal).
 
 Per informazioni complete sull'identità del brand, i colori ufficiali e le linee guida di utilizzo, consultare:
 - 📖 [Documentazione Brand Identity](/docs/brand-identity.md)

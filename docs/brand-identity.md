@@ -1,12 +1,20 @@
 # Brand Identity - Identità del Brand
 
+## Nome Ufficiale
+
+**Alfred** - Messaggistica istantanea
+
+Il nome ufficiale dell'applicazione è **Alfred**.
+
+---
+
 ## Colore Istituzionale Ufficiale
 
-Il colore istituzionale ufficiale dell'applicazione è:
+Il colore istituzionale ufficiale di Alfred è:
 
 ### **#2D2926** - Dark Charcoal
 
-Questo è il colore principale che rappresenta l'identità visiva dell'app e viene utilizzato in tutti gli elementi chiave dell'interfaccia.
+Questo è il colore principale che rappresenta l'identità visiva di **Alfred** e viene utilizzato in tutti gli elementi chiave dell'interfaccia.
 
 ---
 
@@ -157,9 +165,36 @@ Per modificare il colore istituzionale in futuro:
 
 ---
 
+## Logo e Icona
+
+L'applicazione **Alfred** utilizza un'icona minimalista che rappresenta una spunta (✓) all'interno di un cerchio:
+
+- **Forma**: Cerchio con spunta
+- **Colore principale**: `#2D2926` (Dark Charcoal)
+- **Colore spunta**: Bianco (`#FFFFFF`)
+- **Formato SVG**: Disponibile in `/web-client/src/components/SplashScreen.tsx`
+
+```svg
+<svg width="64" height="64" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="30" fill="#2D2926" />
+  <path d="M20 32L28 40L44 24" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+</svg>
+```
+
+---
+
+## Typography
+
+### Titolo App
+- **Nome**: Alfred
+- **Tagline**: "Messaggistica istantanea"
+- **Font Family**: 'Inter', 'SF Pro Display', system-ui
+
+---
+
 ## Contatti e Riferimenti
 
-Per domande sull'identità del brand o sull'uso dei colori, consultare:
+Per domande sull'identità del brand di **Alfred** o sull'uso dei colori, consultare:
 - Questo documento: `/docs/brand-identity.md`
 - Repository: https://github.com/[your-repo]
 
