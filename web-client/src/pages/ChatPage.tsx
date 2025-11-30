@@ -76,6 +76,57 @@ export function ChatPage() {
     enabled: !isLoadingMore,
   })
 
+  // Handle virtual keyboard on mobile
+  useEffect(() => {
+    // Prevent viewport resize when keyboard opens on mobile
+    const handleResize = () => {
+      // On mobile devices, use visualViewport if available
+      if (window.visualViewport && messagesContainerRef.current) {
+        const viewport = window.visualViewport
+        const viewportHeight = viewport.height
+        
+        // Adjust messages container to account for keyboard
+        const messagesContainer = messagesContainerRef.current
+        if (messagesContainer) {
+          // Calculate new bottom position accounting for keyboard
+          const inputHeight = 68
+          const keyboardHeight = window.innerHeight - viewportHeight
+          
+          // Only adjust if keyboard is actually open (significant height difference)
+          if (keyboardHeight > 50) {
+            // Keyboard is open - adjust the bottom to keep messages visible
+            messagesContainer.style.bottom = `${inputHeight}px`
+            messagesContainer.style.paddingBottom = `${keyboardHeight}px`
+          } else {
+            // Keyboard is closed - reset to normal
+            messagesContainer.style.bottom = '68px'
+            messagesContainer.style.paddingBottom = '1rem'
+          }
+          
+          // If user was at bottom, keep them at bottom after keyboard opens
+          if (isAtBottomRef.current && messagesEndRef.current) {
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            }, 100)
+          }
+        }
+      }
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize)
+      window.visualViewport.addEventListener('scroll', handleResize)
+      
+      // Initial call to set correct state
+      handleResize()
+      
+      return () => {
+        window.visualViewport?.removeEventListener('resize', handleResize)
+        window.visualViewport?.removeEventListener('scroll', handleResize)
+      }
+    }
+  }, [messagesContainerRef, isAtBottomRef, messagesEndRef])
+
   // Subscribe a messaggi real-time
   useEffect(() => {
     if (!jid || !myJid) return
