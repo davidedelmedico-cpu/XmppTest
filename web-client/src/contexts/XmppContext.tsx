@@ -8,7 +8,7 @@ import {
   enrichWithRoster,
   updateConversationOnNewMessage,
 } from '../services/conversations'
-import { getConversations, type Conversation, updateConversation } from '../services/conversations-db'
+import { getConversations, type Conversation, updateConversation, clearConversations } from '../services/conversations-db'
 import { saveCredentials, loadCredentials, clearCredentials } from '../services/auth-storage'
 import { handleIncomingMessage } from '../services/messages'
 
@@ -240,6 +240,10 @@ export function XmppProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true)
     try {
+      // Svuota il database delle conversazioni prima di ricaricare
+      await clearConversations()
+      
+      // Ricarica tutte le conversazioni dal server
       const loaded = await loadAllConversations(client)
       const enriched = await enrichWithRoster(client, loaded)
       setConversations(enriched)

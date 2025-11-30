@@ -183,6 +183,17 @@ export async function clearDatabase(): Promise<void> {
   await tx.done
 }
 
+/**
+ * Svuota solo le conversazioni dal database (mantiene messaggi e metadata)
+ * Utile per refresh completo delle conversazioni dal server
+ */
+export async function clearConversations(): Promise<void> {
+  const db = await getDB()
+  const tx = db.transaction('conversations', 'readwrite')
+  await tx.objectStore('conversations').clear()
+  await tx.done
+}
+
 // ============================================================================
 // MESSAGES CRUD OPERATIONS
 // ============================================================================
