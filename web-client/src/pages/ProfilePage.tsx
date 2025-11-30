@@ -297,22 +297,20 @@ export function ProfilePage() {
                 Profilo salvato con successo!
               </div>
             )}
+
+            {/* Save Button */}
+            <div className="profile-page__save-section">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="profile-page__btn profile-page__btn--primary"
+              >
+                {isSaving ? 'Salvataggio...' : 'Salva modifiche'}
+              </button>
+            </div>
           </>
         )}
       </main>
-
-      {/* Footer con bottone fisso sempre visibile */}
-      {!isLoading && (
-        <footer className="profile-page__footer">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="profile-page__btn profile-page__btn--primary"
-          >
-            {isSaving ? 'Salvataggio...' : 'Salva modifiche'}
-          </button>
-        </footer>
-      )}
     </div>
   )
 }
