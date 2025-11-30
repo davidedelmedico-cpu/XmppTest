@@ -1,33 +1,63 @@
 import type { Agent } from 'stanza'
+import type { VCardTemp, VCardTempRecord } from 'stanza/protocol'
 import { normalizeJid } from '../utils/jid'
 import { saveVCard, getVCard as getCachedVCardFromDB, type VCardCache } from './conversations-db'
 
 /**
- * Interfaccia per vCard da stanza.js
+ * Helper per trovare un record di un certo tipo nel vCard
  */
-interface VCardFromStanza {
-  fullName?: string
-  nickname?: string
-  photo?: {
-    type?: string
-    data?: string
-    url?: string
+function findRecord<T extends VCardTempRecord>(records: VCardTempRecord[] | undefined, type: T['type']): T | undefined {
+  return records?.find(r => r.type === type) as T | undefined
+}
+
+/**
+ * Helper per trovare tutti i record di un certo tipo
+ */
+function findRecords<T extends VCardTempRecord>(records: VCardTempRecord[] | undefined, type: T['type']): T[] {
+  return (records?.filter(r => r.type === type) as T[]) || []
+}
+
+/**
+ * Converte Buffer a stringa base64
+ */
+function bufferToBase64(buffer: Buffer | Uint8Array | undefined): string | undefined {
+  if (!buffer) return undefined
+  
+  // Se è già un Buffer di Node.js
+  if (Buffer.isBuffer(buffer)) {
+    return buffer.toString('base64')
   }
-  email?: string | string[]
-  description?: string
-  birthday?: string
-  telephone?: string | string[]
-  url?: string | string[]
-  address?: {
-    street?: string
-    locality?: string
-    region?: string
-    postalCode?: string
-    country?: string
+  
+  // Se è un Uint8Array (browser)
+  if (buffer instanceof Uint8Array) {
+    // Converti Uint8Array a stringa binaria
+    let binary = ''
+    for (let i = 0; i < buffer.length; i++) {
+      binary += String.fromCharCode(buffer[i])
+    }
+    return btoa(binary)
   }
-  organization?: {
-    name?: string
-    unit?: string
+  
+  return undefined
+}
+
+/**
+ * Converte stringa base64 a Buffer/Uint8Array
+ */
+function base64ToBuffer(base64: string | undefined): Uint8Array | undefined {
+  if (!base64) return undefined
+  
+  try {
+    // In ambiente browser, usa atob per decodificare base64
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  } catch (error) {
+    console.error('Errore nella conversione base64 a buffer:', error)
+    return undefined
   }
 }
 
@@ -39,21 +69,27 @@ export async function fetchVCardFromServer(client: Agent, jid: string): Promise<
     const normalizedJid = normalizeJid(jid)
     
     // Recupera vCard dal server
-    const vcard = await client.getVCard(normalizedJid) as VCardFromStanza | undefined
+    const vcard: VCardTemp = await client.getVCard(normalizedJid)
     
     if (!vcard) {
       return null
     }
 
+    // Estrai i campi dai records
+    const nicknameRecord = findRecord<{ type: 'nickname'; value: string }>(vcard.records, 'nickname')
+    const photoRecord = findRecord<{ type: 'photo'; data?: Buffer; mediaType?: string; url?: string }>(vcard.records, 'photo')
+    const emailRecords = findRecords<{ type: 'email'; value?: string }>(vcard.records, 'email')
+    const descriptionRecord = findRecord<{ type: 'description'; value: string }>(vcard.records, 'description')
+
     // Converti in VCardCache
     const vcardCache: VCardCache = {
       jid: normalizedJid,
       fullName: vcard.fullName,
-      nickname: vcard.nickname,
-      photoData: vcard.photo?.data,
-      photoType: vcard.photo?.type,
-      email: Array.isArray(vcard.email) ? vcard.email[0] : vcard.email,
-      description: vcard.description,
+      nickname: nicknameRecord?.value,
+      photoData: bufferToBase64(photoRecord?.data as Buffer | Uint8Array | undefined),
+      photoType: photoRecord?.mediaType,
+      email: emailRecords[0]?.value,
+      description: descriptionRecord?.value,
       lastUpdated: new Date()
     }
 
@@ -160,23 +196,73 @@ export async function publishVCard(
   }
 ): Promise<boolean> {
   try {
-    // Converti nel formato stanza
-    const vcardForStanza: VCardFromStanza = {
-      fullName: vcard.fullName,
-      nickname: vcard.nickname,
-      email: vcard.email,
-      description: vcard.description,
-      birthday: vcard.birthday,
-      telephone: vcard.telephone,
-      url: vcard.url,
+    // Costruisci l'array di records
+    const records: VCardTempRecord[] = []
+
+    // Aggiungi nickname se presente
+    if (vcard.nickname) {
+      records.push({
+        type: 'nickname',
+        value: vcard.nickname
+      })
     }
 
     // Aggiungi foto se presente
     if (vcard.photoData && vcard.photoType) {
-      vcardForStanza.photo = {
-        type: vcard.photoType,
-        data: vcard.photoData,
+      const photoBuffer = base64ToBuffer(vcard.photoData)
+      if (photoBuffer) {
+        records.push({
+          type: 'photo',
+          data: photoBuffer as Buffer,
+          mediaType: vcard.photoType
+        })
       }
+    }
+
+    // Aggiungi email se presente
+    if (vcard.email) {
+      records.push({
+        type: 'email',
+        value: vcard.email
+      })
+    }
+
+    // Aggiungi description se presente
+    if (vcard.description) {
+      records.push({
+        type: 'description',
+        value: vcard.description
+      })
+    }
+
+    // Aggiungi birthday se presente
+    if (vcard.birthday) {
+      records.push({
+        type: 'birthday',
+        value: vcard.birthday
+      })
+    }
+
+    // Aggiungi telephone se presente
+    if (vcard.telephone) {
+      records.push({
+        type: 'tel',
+        value: vcard.telephone
+      })
+    }
+
+    // Aggiungi url se presente
+    if (vcard.url) {
+      records.push({
+        type: 'url',
+        value: vcard.url
+      })
+    }
+
+    // Converti nel formato stanza
+    const vcardForStanza: VCardTemp = {
+      fullName: vcard.fullName,
+      records: records.length > 0 ? records : undefined
     }
 
     // Pubblica sul server

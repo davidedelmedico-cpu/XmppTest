@@ -26,6 +26,7 @@ interface XmppContextType {
   connect: (jid: string, password: string) => Promise<void>
   disconnect: () => void
   refreshConversations: () => Promise<void>
+  reloadConversationsFromDB: () => Promise<void>
   subscribeToMessages: (callback: MessageCallback) => () => void
   markConversationAsRead: (jid: string) => Promise<void>
 }
@@ -267,6 +268,15 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     }
   }, []) // Nessuna dependency: usa solo ref
 
+  const reloadConversationsFromDB = useCallback(async () => {
+    try {
+      const updated = await getConversations()
+      setConversations(updated)
+    } catch (error) {
+      console.error('Errore nel ricaricamento conversazioni dal DB:', error)
+    }
+  }, [])
+
   const markConversationAsRead = useCallback(async (conversationJid: string) => {
     try {
       await updateConversation(conversationJid, { unreadCount: 0 })
@@ -291,6 +301,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         connect,
         disconnect,
         refreshConversations,
+        reloadConversationsFromDB,
         subscribeToMessages,
         markConversationAsRead,
       }}

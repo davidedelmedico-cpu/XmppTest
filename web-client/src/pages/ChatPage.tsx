@@ -20,7 +20,7 @@ import './ChatPage.css'
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
   const navigate = useNavigate()
-  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, jid: myJid } = useXmpp()
+  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, reloadConversationsFromDB, jid: myJid } = useXmpp()
   
   const jid = useMemo(() => encodedJid ? decodeURIComponent(encodedJid) : '', [encodedJid])
   const conversation = useMemo(() => conversations.find((c) => c.jid === jid), [conversations, jid])
@@ -83,11 +83,27 @@ export function ChatPage() {
       // Ricarica messaggi dal server
       await reloadAllMessages()
       
-      // Aggiorna vCard del contatto (forza refresh)
+      // Aggiorna vCard del contatto (forza refresh) e ricarica conversazioni
       if (client && jid) {
         try {
-          const { getVCard } = await import('../services/vcard')
-          await getVCard(client, jid, true) // forceRefresh = true
+          const { getVCard, getDisplayName } = await import('../services/vcard')
+          const { updateConversation } = await import('../services/conversations-db')
+          
+          // Scarica il vCard aggiornato dal server
+          const vcard = await getVCard(client, jid, true) // forceRefresh = true
+          
+          // Aggiorna la conversazione nel database con i nuovi dati vCard
+          if (vcard) {
+            const displayName = getDisplayName(jid, conversation?.displayName, vcard)
+            await updateConversation(jid, {
+              displayName,
+              avatarData: vcard.photoData,
+              avatarType: vcard.photoType,
+            })
+            
+            // Ricarica le conversazioni dal database per aggiornare la UI
+            await reloadConversationsFromDB()
+          }
         } catch (error) {
           console.error('Errore nel refresh vCard durante pull-to-refresh:', error)
         }
