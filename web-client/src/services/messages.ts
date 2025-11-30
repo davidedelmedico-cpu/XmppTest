@@ -6,6 +6,7 @@ import {
   getMessagesForConversation,
   updateMessageStatus,
   updateMessageId,
+  updateConversation,
   type Message,
 } from './conversations-db'
 import { normalizeJid } from '../utils/jid'
@@ -285,6 +286,25 @@ export async function sendMessage(
     } else {
       // Se non c'è ID server, aggiorna solo lo status
       await updateMessageStatus(tempId, 'sent')
+    }
+
+    // 4. Crea/aggiorna la conversazione se non esiste
+    // Questo è importante quando si invia un messaggio a un nuovo contatto
+    try {
+      const finalMessageId = serverId !== tempId ? serverId : tempId
+      await updateConversation(normalizedJid, {
+        jid: normalizedJid,
+        lastMessage: {
+          body,
+          timestamp,
+          from: 'me',
+          messageId: finalMessageId,
+        },
+        unreadCount: 0, // Messaggio inviato, non ci sono messaggi non letti
+      })
+    } catch (error) {
+      // Non bloccare l'invio se c'è un errore nell'aggiornamento della conversazione
+      console.warn('Errore nell\'aggiornamento della conversazione:', error)
     }
 
     return { tempId, success: true }

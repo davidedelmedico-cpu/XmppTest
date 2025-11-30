@@ -7,6 +7,7 @@ import {
   reloadAllMessagesFromServer,
   type Message,
 } from '../services/messages'
+import { getConversations } from '../services/conversations-db'
 import { mergeMessages } from '../utils/message'
 import { PAGINATION } from '../config/constants'
 
@@ -15,6 +16,7 @@ interface UseMessagesOptions {
   client: Agent | null
   isConnected: boolean
   onNewMessage?: (message: Message) => void
+  onConversationUpdated?: () => void // Callback per notificare aggiornamento conversazione
 }
 
 interface UseMessagesReturn {
@@ -55,6 +57,7 @@ export function useMessages({
   client,
   isConnected,
   onNewMessage,
+  onConversationUpdated,
 }: UseMessagesOptions): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -209,6 +212,11 @@ export function useMessages({
           if (onNewMessage && allMessages.length > 0) {
             const newMsg = allMessages[allMessages.length - 1]
             onNewMessage(newMsg)
+          }
+
+          // Notifica aggiornamento conversazione (per aggiornare la lista conversazioni)
+          if (onConversationUpdated) {
+            onConversationUpdated()
           }
         } else {
           setError(result.error || 'Invio fallito')

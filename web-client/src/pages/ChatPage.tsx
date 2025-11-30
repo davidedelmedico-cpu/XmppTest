@@ -19,7 +19,7 @@ import './ChatPage.css'
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
   const navigate = useNavigate()
-  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, jid: myJid } = useXmpp()
+  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, jid: myJid, refreshConversations } = useXmpp()
   
   const jid = useMemo(() => encodedJid ? decodeURIComponent(encodedJid) : '', [encodedJid])
   const conversation = useMemo(() => conversations.find((c) => c.jid === jid), [conversations, jid])
@@ -46,6 +46,13 @@ export function ChatPage() {
     jid,
     client,
     isConnected,
+    onConversationUpdated: () => {
+      // Aggiorna la lista conversazioni dopo l'invio di un messaggio
+      // Questo è importante quando si invia un messaggio a un nuovo contatto
+      // La conversazione è già stata creata/aggiornata nel database da sendMessage
+      // Qui aggiorniamo la lista nel contesto per riflettere le modifiche
+      void refreshConversations()
+    },
   })
 
   // Custom hook per gestione scroll
