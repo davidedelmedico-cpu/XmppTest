@@ -16,6 +16,7 @@
   align-items: center;
   height: 56px;
   padding: 0 1rem;
+  padding-top: env(safe-area-inset-top, 0);
   background: #5682a3;
   color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);

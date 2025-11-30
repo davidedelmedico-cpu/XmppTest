@@ -20,6 +20,7 @@
   align-items: center;
   height: 56px;
   padding: 0 1rem;
+  padding-top: env(safe-area-inset-top, 0);
   background: #5682a3;
   color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
@@ -122,10 +123,10 @@
 /* Messages Area */
 .chat-page__messages {
   position: fixed;
-  top: 56px;
+  top: calc(56px + env(safe-area-inset-top, 0px));
   left: 0;
   right: 0;
-  bottom: 68px; /* Height of input area + padding */
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px)); /* Height of input area + padding + safe area */
   overflow-y: auto;
   overflow-x: hidden;
   padding: 1rem;
@@ -333,6 +334,7 @@
   align-items: flex-end;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   background: #f0f0f0;
   border-top: 1px solid #e0e0e0;
   flex-shrink: 0;

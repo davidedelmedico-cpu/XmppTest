@@ -64,6 +64,37 @@ document.addEventListener('gestureend', (e) => {
   e.preventDefault()
 }, { passive: false })
 
+// Prevenzione refresh accidentale (F5, Cmd+R, Ctrl+R)
+document.addEventListener('keydown', (e) => {
+  // Blocca F5
+  if (e.key === 'F5') {
+    e.preventDefault()
+    return false
+  }
+  
+  // Blocca Cmd+R / Ctrl+R
+  if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+    e.preventDefault()
+    return false
+  }
+  
+  // Blocca Cmd+Shift+R / Ctrl+Shift+R (hard refresh)
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
+    e.preventDefault()
+    return false
+  }
+}, { passive: false })
+
+// Prevenzione refresh con menu contestuale (tasto destro)
+document.addEventListener('contextmenu', (e) => {
+  // Permetti il menu contestuale solo su input e textarea
+  const target = e.target as HTMLElement
+  if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+    e.preventDefault()
+    return false
+  }
+}, { passive: false })
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

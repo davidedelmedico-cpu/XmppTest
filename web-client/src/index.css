@@ -1,5 +1,8 @@
 * {
   box-sizing: border-box;
+  /* Rimuove il tap highlight su mobile (il flash blu/grigio quando si tocca) */
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
 }
 
 html {
@@ -85,6 +88,29 @@ textarea {
   /* Permetti solo scroll verticale, blocca zoom */
   touch-action: pan-y;
   -ms-touch-action: pan-y;
+}
+
+/* Prevenzione drag su immagini e altri elementi */
+img,
+picture,
+video {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: auto;
+}
+
+/* Supporto per safe area insets (iPhone con notch) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  #root {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 /* Animazione per il loader */
