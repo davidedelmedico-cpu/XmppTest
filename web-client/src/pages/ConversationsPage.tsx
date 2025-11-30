@@ -9,7 +9,7 @@ export function ConversationsPage() {
 
   const handleLogout = () => {
     disconnect()
-    // Non serve più navigate('/') - il popup non apparirà grazie a logoutIntentional
+    // Il popup di login apparirà automaticamente dopo la disconnessione
   }
 
   return (

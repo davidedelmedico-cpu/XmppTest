@@ -154,6 +154,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       setIsConnected(false)
       setClient(null)
       setJid(null)
+      // Reset logoutIntentional per permettere al popup di login di apparire
+      setLogoutIntentional(false)
     }
 
     client.on('message', handleMessage)
@@ -219,9 +221,6 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   }
 
   const disconnect = () => {
-    // Setta flag per indicare che è un logout volontario
-    setLogoutIntentional(true)
-    
     if (client) {
       client.disconnect()
     }
@@ -230,6 +229,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     setJid(null)
     setConversations([])
     clearCredentials()
+    // Reset logoutIntentional per permettere al popup di login di apparire
+    setLogoutIntentional(false)
   }
 
   const refreshConversations = async () => {

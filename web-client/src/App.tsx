@@ -34,7 +34,7 @@ const PageLoader = () => (
 )
 
 function AppRoutes() {
-  const { isConnected, isInitializing, logoutIntentional } = useXmpp()
+  const { isConnected, isInitializing } = useXmpp()
 
   return (
     <>
@@ -48,8 +48,8 @@ function AppRoutes() {
       </Suspense>
 
       {/* Popup di login globale - appare sopra le route quando necessario */}
-      {/* Mostrato durante inizializzazione O quando non connesso (ma non dopo logout volontario) */}
-      {(isInitializing || !isConnected) && !logoutIntentional && (
+      {/* Mostrato durante inizializzazione O quando non connesso */}
+      {(isInitializing || !isConnected) && (
         <LoginPopup isInitializing={isInitializing} />
       )}
     </>
