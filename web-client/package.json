@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:browser": "node test-browser.mjs",
+    "test:browser:setup": "npx playwright install chromium"
   },
   "dependencies": {
     "events": "^3.3.0",
