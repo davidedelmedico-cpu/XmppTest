@@ -7,6 +7,9 @@ html {
   overscroll-behavior-y: none;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
+  /* Disabilita lo zoom/pinch-zoom */
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
 }
 
 :root {
@@ -41,6 +44,9 @@ body {
   user-select: none;
   /* Disabilita anche il touch callout su iOS */
   -webkit-touch-callout: none;
+  /* Disabilita lo zoom/pinch-zoom */
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
 }
 
 #root {
