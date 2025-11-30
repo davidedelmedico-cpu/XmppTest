@@ -338,9 +338,6 @@ export function ChatPage() {
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!messagesContainerRef.current || isPullRefreshing || isLoadingMore) return
     
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 5
-    
     // Salva sempre la posizione iniziale, ma non bloccare nulla
     pullStartY.current = e.touches[0].clientY
     pullStartX.current = e.touches[0].clientX
