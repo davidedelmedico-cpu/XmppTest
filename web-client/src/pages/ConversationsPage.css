@@ -305,6 +305,35 @@
   }
 }
 
+/* Floating Action Button */
+.conversations-page__fab {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: #5682a3;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 100;
+}
+
+.conversations-page__fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.conversations-page__fab:active {
+  transform: scale(1.05);
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .conversations-page__header {
@@ -317,5 +346,24 @@
 
   .conversations-page__sidebar {
     width: 260px;
+  }
+
+  .conversations-page__fab {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Dark mode FAB */
+@media (prefers-color-scheme: dark) {
+  .conversations-page__fab {
+    background: #5682a3;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .conversations-page__fab:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   }
 }

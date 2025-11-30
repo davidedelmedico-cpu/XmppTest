@@ -6,6 +6,7 @@ import { useChatScroll } from '../hooks/useChatScroll'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useBackButton } from '../hooks/useBackButton'
 import { formatDateSeparator, formatMessageTime, isSameDay } from '../utils/date'
+import { isValidJid } from '../utils/jid'
 import { TEXT_LIMITS } from '../config/constants'
 import './ChatPage.css'
 
@@ -27,6 +28,14 @@ export function ChatPage() {
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Validate JID format - redirect if invalid
+  useEffect(() => {
+    if (jid && !isValidJid(jid)) {
+      console.error('JID non valido:', jid)
+      navigate('/conversations', { replace: true })
+    }
+  }, [jid, navigate])
 
   // Gestione back button
   useBackButton()
