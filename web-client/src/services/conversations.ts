@@ -35,18 +35,13 @@ function extractMessageBody(msg: MAMResult): string {
  * Estrae il timestamp del messaggio
  */
 function extractTimestamp(msg: MAMResult): Date {
-  // DEBUG: Vediamo la struttura del messaggio
-  console.log('DEBUG extractTimestamp - msg.item:', JSON.stringify(msg.item, null, 2))
-  
   // 1. Prova con il delay del wrapper Forward (MAM standard)
   if (msg.item?.delay?.timestamp) {
-    console.log('DEBUG: Trovato timestamp in msg.item.delay.timestamp:', msg.item.delay.timestamp)
     return msg.item.delay.timestamp
   }
 
   // 2. Prova con il delay del messaggio interno (per messaggi offline)
   if (msg.item?.message?.delay?.timestamp) {
-    console.log('DEBUG: Trovato timestamp in msg.item.message.delay.timestamp:', msg.item.message.delay.timestamp)
     return msg.item.message.delay.timestamp
   }
 
@@ -55,14 +50,11 @@ function extractTimestamp(msg: MAMResult): Date {
   if (delay && typeof delay === 'object' && 'stamp' in delay) {
     const stamp = (delay as { stamp?: string }).stamp
     if (stamp) {
-      console.log('DEBUG: Trovato stamp string:', stamp)
       return new Date(stamp)
     }
   }
   
   // 4. Fallback: timestamp attuale (per messaggi senza delay)
-  console.warn('ATTENZIONE: Nessun timestamp trovato nel messaggio MAM, uso timestamp corrente!')
-  console.warn('Struttura completa del messaggio:', msg)
   return new Date()
 }
 
