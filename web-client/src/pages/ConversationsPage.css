@@ -57,6 +57,39 @@
   gap: 0.5rem;
 }
 
+/* Connection status indicator */
+.conversations-page__connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(248, 113, 113, 0.2);
+  border-radius: 1rem;
+  font-size: 0.85rem;
+  color: #fecaca;
+}
+
+.conversations-page__status-dot {
+  width: 8px;
+  height: 8px;
+  background: #fecaca;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.conversations-page__status-text {
+  font-weight: 500;
+}
+
 /* Main content */
 .conversations-page__main {
   flex: 1;

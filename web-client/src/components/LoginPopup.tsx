@@ -1,0 +1,181 @@
+import { useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
+import { useXmpp } from '../contexts/XmppContext'
+import './LoginPopup.css'
+
+type AsyncState = 'idle' | 'pending' | 'success' | 'error'
+
+type FormStatus = {
+  state: AsyncState
+  message?: string
+  details?: string
+}
+
+const initialStatus: FormStatus = { state: 'idle' }
+
+/**
+ * Valida e normalizza un username completo (formato: username@server.com)
+ */
+const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string; error?: string } => {
+  const trimmed = input.trim()
+  
+  if (!trimmed) {
+    return { valid: false, error: 'Inserisci il tuo username completo.' }
+  }
+
+  if (!trimmed.includes('@')) {
+    return { valid: false, error: 'Inserisci il tuo username completo nel formato: username@server.com' }
+  }
+
+  const parts = trimmed.split('@')
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Formato non valido. Usa: username@server.com' }
+  }
+
+  const [local, domainPart] = parts
+  const [domain, resource] = domainPart.split('/')
+
+  if (local && local.length > 0) {
+    if (local.length > 1023) {
+      return { valid: false, error: 'Lo username è troppo lungo.' }
+    }
+  }
+
+  if (!domain || domain.length === 0) {
+    return { valid: false, error: 'Inserisci anche il server (esempio: username@server.com).' }
+  }
+
+  if (domain.length > 1023) {
+    return { valid: false, error: 'Il nome del server è troppo lungo.' }
+  }
+
+  const normalizedDomain = domain.toLowerCase()
+  const normalizedJid = local ? `${local}@${normalizedDomain}${resource ? `/${resource}` : ''}` : normalizedDomain
+
+  return { valid: true, jid: normalizedJid }
+}
+
+interface LoginPopupProps {
+  isInitializing: boolean
+}
+
+export function LoginPopup({ isInitializing }: LoginPopupProps) {
+  const { connect, jid } = useXmpp()
+  const [loginForm, setLoginForm] = useState({
+    jid: jid || '',  // Pre-compila con ultimo JID se disponibile
+    password: ''
+  })
+  const [loginStatus, setLoginStatus] = useState<FormStatus>(initialStatus)
+
+  const handleLoginChange = (field: 'jid' | 'password') => (event: ChangeEvent<HTMLInputElement>) => {
+    setLoginForm((prev) => ({ ...prev, [field]: event.target.value }))
+    setLoginStatus(initialStatus)
+  }
+
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (loginStatus.state === 'pending') {
+      return
+    }
+
+    const jidValidation = validateAndNormalizeJid(loginForm.jid)
+    if (!jidValidation.valid) {
+      setLoginStatus({ state: 'error', message: jidValidation.error || 'Username non valido.' })
+      return
+    }
+
+    const password = loginForm.password
+
+    if (!password) {
+      setLoginStatus({ state: 'error', message: 'Inserisci la password per continuare.' })
+      return
+    }
+
+    setLoginStatus({ state: 'pending', message: 'Connessione al server...' })
+
+    try {
+      await connect(jidValidation.jid!, password)
+      setLoginStatus({
+        state: 'success',
+        message: 'Accesso completato con successo!',
+      })
+      // Il popup si chiuderà automaticamente quando isConnected diventa true
+    } catch (error) {
+      setLoginStatus({
+        state: 'error',
+        message: 'Errore durante il login.',
+        details: (error as Error).message,
+      })
+    }
+  }
+
+  return (
+    <div className="login-popup-overlay">
+      <div className="login-popup-modal">
+        {isInitializing ? (
+          // Modalità 1: Caricamento durante auto-login
+          <div className="login-popup-loading">
+            <div className="login-popup-spinner"></div>
+            <p className="login-popup-loading-text">Connessione in corso...</p>
+          </div>
+        ) : (
+          // Modalità 2: Form di login
+          <>
+            <div className="login-popup-header">
+              <h2>Connessione richiesta</h2>
+              <p>Effettua il login per continuare</p>
+            </div>
+            
+            <form className="login-popup-form" onSubmit={handleLoginSubmit}>
+              <label className="login-popup-field">
+                <span>Username</span>
+                <input
+                  type="text"
+                  autoComplete="username"
+                  value={loginForm.jid}
+                  onChange={handleLoginChange('jid')}
+                  placeholder="mario@conversations.im"
+                  disabled={loginStatus.state === 'pending'}
+                />
+              </label>
+              
+              <label className="login-popup-field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={loginForm.password}
+                  onChange={handleLoginChange('password')}
+                  disabled={loginStatus.state === 'pending'}
+                />
+              </label>
+              
+              <button 
+                type="submit" 
+                className="login-popup-button"
+                disabled={loginStatus.state === 'pending'}
+              >
+                {loginStatus.state === 'pending' ? 'Connessione in corso...' : 'Collegati'}
+              </button>
+            </form>
+            
+            <StatusBanner status={loginStatus} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const StatusBanner = ({ status }: { status: FormStatus }) => {
+  if (status.state === 'idle') {
+    return null
+  }
+
+  return (
+    <div className={`login-popup-status login-popup-status--${status.state}`}>
+      <p>{status.message}</p>
+      {status.details && <p className="login-popup-status-details">{status.details}</p>}
+    </div>
+  )
+}

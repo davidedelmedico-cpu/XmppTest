@@ -19,6 +19,7 @@ interface XmppContextType {
   isLoading: boolean
   isInitializing: boolean
   error: string | null
+  logoutIntentional: boolean
   connect: (jid: string, password: string) => Promise<void>
   disconnect: () => void
   refreshConversations: () => Promise<void>
@@ -34,6 +35,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [logoutIntentional, setLogoutIntentional] = useState(false)
   const hasInitialized = useRef(false)
 
   // Inizializzazione al caricamento: controlla credenziali e tenta login
@@ -136,6 +138,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   }, [client, isConnected, jid])
 
   const connect = async (jid: string, password: string) => {
+    // Reset flag quando l'utente fa login manualmente
+    setLogoutIntentional(false)
     setIsLoading(true)
     setError(null)
 
@@ -187,6 +191,9 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   }
 
   const disconnect = () => {
+    // Setta flag per indicare che è un logout volontario
+    setLogoutIntentional(true)
+    
     if (client) {
       client.disconnect()
     }
@@ -225,6 +232,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         isLoading,
         isInitializing,
         error,
+        logoutIntentional,
         connect,
         disconnect,
         refreshConversations,

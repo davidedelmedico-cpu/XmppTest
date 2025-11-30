@@ -1,28 +1,15 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useXmpp } from '../contexts/XmppContext'
 import { ConversationsList } from '../components/ConversationsList'
 import './ConversationsPage.css'
 
 export function ConversationsPage() {
-  const navigate = useNavigate()
   const { isConnected, disconnect, jid } = useXmpp()
   const [showMenu, setShowMenu] = useState(false)
 
-  // Se non connesso, reindirizza al login
-  useEffect(() => {
-    if (!isConnected) {
-      navigate('/')
-    }
-  }, [isConnected, navigate])
-
   const handleLogout = () => {
     disconnect()
-    navigate('/')
-  }
-
-  if (!isConnected) {
-    return null
+    // Non serve più navigate('/') - il popup non apparirà grazie a logoutIntentional
   }
 
   return (
@@ -42,7 +29,12 @@ export function ConversationsPage() {
         </button>
         <h1 className="conversations-page__title">Alfred</h1>
         <div className="conversations-page__header-actions">
-          {/* Spazio per future azioni (ricerca, etc.) */}
+          {!isConnected && (
+            <div className="conversations-page__connection-status">
+              <span className="conversations-page__status-dot"></span>
+              <span className="conversations-page__status-text">Non connesso</span>
+            </div>
+          )}
         </div>
       </header>
 
