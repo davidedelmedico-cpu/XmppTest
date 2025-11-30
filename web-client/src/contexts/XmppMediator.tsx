@@ -3,7 +3,7 @@
  * Elimina dipendenze circolari tra context e centralizza orchestrazione
  */
 
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { Agent } from 'stanza'
 import type { ReceivedMessage } from 'stanza/protocol'
@@ -283,7 +283,11 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
     setError(null)
   }, [])
 
-  const contextValue: XmppMediatorContextType = {
+  // Deriva isConnected e isConnecting dallo stato (reattivo)
+  const isConnected = state === 'connected'
+  const isConnecting = state === 'connecting' || state === 'authenticating'
+
+  const contextValue: XmppMediatorContextType = useMemo(() => ({
     // Stato
     state,
     client,
@@ -298,8 +302,8 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
     hasCredentials,
 
     // Connection
-    isConnected: stateMachine.current.isConnected(),
-    isConnecting: stateMachine.current.isConnecting(),
+    isConnected,
+    isConnecting,
 
     // Conversations
     refreshAllConversations,
@@ -311,7 +315,24 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
 
     // Utility
     clearError,
-  }
+  }), [
+    state,
+    client,
+    jid,
+    conversations,
+    isLoading,
+    error,
+    login,
+    logout,
+    hasCredentials,
+    isConnected,
+    isConnecting,
+    refreshAllConversations,
+    refreshSingleConversation,
+    markAsRead,
+    subscribeToMessages,
+    clearError,
+  ])
 
   return (
     <XmppMediatorContext.Provider value={contextValue}>
