@@ -1,7 +1,7 @@
 import { createClient } from 'stanza'
 import type { Agent } from 'stanza'
 import plugins from 'stanza/plugins'
-import { DEFAULT_RESOURCE } from '../config/constants'
+import { DEFAULT_RESOURCE, TIMEOUTS } from '../config/constants'
 
 export type XmppConnectionSettings = {
   jid: string
@@ -9,31 +9,15 @@ export type XmppConnectionSettings = {
   resource?: string
 }
 
+import { parseJid as parseJidUtil } from '../utils/jid'
+
 /**
  * Estrae dominio e username da un JID completo
  * Formato JID: [local@]domain[/resource]
+ * 
+ * @deprecated Usa parseJid da '../utils/jid' invece
  */
-const parseJid = (jid: string): { username: string; domain: string; resource?: string } => {
-  const trimmed = jid.trim()
-  
-  // Rimuovi resource se presente
-  const [jidWithoutResource, resource] = trimmed.split('/')
-  
-  // Separa local part e domain
-  const parts = jidWithoutResource.split('@')
-  
-  if (parts.length === 1) {
-    // Solo domain (senza local part)
-    return { username: '', domain: parts[0].toLowerCase(), resource }
-  }
-  
-  const [username, domain] = parts
-  return {
-    username: username || '',
-    domain: domain.toLowerCase(),
-    resource: resource || undefined,
-  }
-}
+const parseJid = parseJidUtil
 
 /**
  * Discovers XMPP server hostname using SRV records (RFC 6120)
@@ -291,7 +275,7 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
 const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
   let settled = false
   let registerMessage = 'Account creato e autenticato.'
-  const CONNECTION_TIMEOUT = 5000 // 5 seconds
+  const CONNECTION_TIMEOUT = TIMEOUTS.CONNECTION
 
   return new Promise((resolve) => {
     // Define handlers first

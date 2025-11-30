@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
+import { truncateMessage, getInitials } from '../utils/message'
+import { formatConversationTimestamp } from '../utils/date'
+import { PULL_TO_REFRESH } from '../config/constants'
 import './ConversationsList.css'
 
 export function ConversationsList() {
@@ -78,7 +81,7 @@ export function ConversationsList() {
       const finalDistance = currentPullDistance.current
       
       // Usa i ref per controllare lo stato attuale senza dipendenze
-      if (finalDistance > 60 && !isRefreshingRef.current && !isLoadingRef.current) {
+      if (finalDistance > PULL_TO_REFRESH.THRESHOLD && !isRefreshingRef.current && !isLoadingRef.current) {
         // Trigger refresh se trascinato abbastanza
         setIsRefreshing(true)
         window.dispatchEvent(new CustomEvent('refresh-start'))
@@ -89,7 +92,7 @@ export function ConversationsList() {
               setPullDistance(0)
               currentPullDistance.current = 0
               window.dispatchEvent(new CustomEvent('refresh-end'))
-            }, 300)
+            }, PULL_TO_REFRESH.ANIMATION_DURATION)
           })
           .catch(() => {
             setIsRefreshing(false)
@@ -122,40 +125,6 @@ export function ConversationsList() {
     }
   }, [])
 
-  const formatTimestamp = (date: Date): string => {
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-    if (days === 0) {
-      // Oggi: mostra solo l'ora
-      return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    } else if (days === 1) {
-      return 'Ieri'
-    } else if (days < 7) {
-      return `${days}g fa`
-    } else {
-      return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
-    }
-  }
-
-  const truncateMessage = (body: string, maxLength = 50): string => {
-    if (body.length <= maxLength) {
-      return body
-    }
-    return body.substring(0, maxLength).trim() + '...'
-  }
-
-  const getInitials = (jid: string, displayName?: string): string => {
-    if (displayName) {
-      const parts = displayName.trim().split(' ')
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      }
-      return displayName[0]?.toUpperCase() || '?'
-    }
-    return jid.split('@')[0][0]?.toUpperCase() || '?'
-  }
 
   const handleConversationClick = (jid: string) => {
     navigate(`/chat/${encodeURIComponent(jid)}`)
@@ -205,7 +174,7 @@ export function ConversationsList() {
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                 <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
               </svg>
-              <span>{pullDistance > 60 ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}</span>
+              <span>{pullDistance > PULL_TO_REFRESH.THRESHOLD ? 'Rilascia per aggiornare' : 'Trascina per aggiornare'}</span>
             </>
           )}
         </div>
@@ -215,8 +184,8 @@ export function ConversationsList() {
         ref={scrollContainerRef}
         className="conversations-list__items"
         style={{
-          transform: `translateY(${Math.min(pullDistance, 100)}px)`,
-          transition: pullDistance === 0 && !isRefreshing ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+          transform: `translateY(${Math.min(pullDistance, PULL_TO_REFRESH.MAX_DISTANCE)}px)`,
+          transition: pullDistance === 0 && !isRefreshing ? `transform ${PULL_TO_REFRESH.ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)` : 'none',
         }}
       >
         {isLoading && conversations.length === 0 ? (
@@ -252,7 +221,7 @@ export function ConversationsList() {
                     {conv.lastMessage.from === 'me' ? 'Tu: ' : ''}
                   </span>
                   <span className="conversation-item__body">
-                    {truncateMessage(conv.lastMessage.body)}
+                    {truncateMessage(conv.lastMessage.body, 50)}
                   </span>
                   {conv.unreadCount > 0 && (
                     <span className="conversation-item__unread">{conv.unreadCount}</span>

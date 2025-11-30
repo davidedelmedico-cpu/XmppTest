@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
 import { loadMessagesForContact, sendMessage, getLocalMessages, reloadAllMessagesFromServer, type Message } from '../services/messages'
+import { mergeMessages } from '../utils/message'
+import { formatDateSeparator, formatMessageTime, isSameDay } from '../utils/date'
+import { PAGINATION, PULL_TO_REFRESH, TIMEOUTS, TEXT_LIMITS } from '../config/constants'
 import './ChatPage.css' 
 
 export function ChatPage() {
@@ -87,41 +90,13 @@ export function ChatPage() {
 
     const adjustHeight = () => {
       textarea.style.height = 'auto'
-      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px'
+      textarea.style.height = Math.min(textarea.scrollHeight, TEXT_LIMITS.MAX_TEXTAREA_HEIGHT) + 'px'
     }
 
     textarea.addEventListener('input', adjustHeight)
     return () => textarea.removeEventListener('input', adjustHeight)
   }, [])
 
-  // Helper: De-duplica e merge messaggi
-  const mergeMessages = (existing: Message[], newMessages: Message[]): Message[] => {
-    const messageMap = new Map<string, Message>()
-    
-    // Aggiungi messaggi esistenti
-    existing.forEach(msg => messageMap.set(msg.messageId, msg))
-    
-    // Merge/sovrascrivi con nuovi messaggi (più recenti hanno priorità)
-    newMessages.forEach(msg => {
-      const existingMsg = messageMap.get(msg.messageId)
-      
-      // Se esiste già, mantieni lo status più aggiornato
-      if (existingMsg) {
-        // Se il nuovo messaggio ha status 'sent' e quello esistente era 'pending', aggiorna
-        if (msg.status === 'sent' && existingMsg.status === 'pending') {
-          messageMap.set(msg.messageId, msg)
-        }
-        // Altrimenti mantieni quello esistente (evita downgrade di status)
-      } else {
-        messageMap.set(msg.messageId, msg)
-      }
-    })
-    
-    // Converti in array e ordina per timestamp
-    return Array.from(messageMap.values()).sort(
-      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-    )
-  }
 
   // Helper: Update messages in modo safe
   const safeSetMessages = (updater: (prev: Message[]) => Message[]) => {
@@ -141,14 +116,14 @@ export function ChatPage() {
 
     try {
       // Prima carica dalla cache locale (veloce)
-      const localMessages = await getLocalMessages(jid, { limit: 50 })
+      const localMessages = await getLocalMessages(jid, { limit: PAGINATION.DEFAULT_MESSAGE_LIMIT })
       if (localMessages.length > 0 && isMountedRef.current) {
         safeSetMessages(() => localMessages)
         setIsLoading(false)
       }
 
       // Poi carica dal server in background
-      const result = await loadMessagesForContact(client, jid, { maxResults: 50 })
+      const result = await loadMessagesForContact(client, jid, { maxResults: PAGINATION.DEFAULT_MESSAGE_LIMIT })
       
       if (!isMountedRef.current) return // Check prima di setState
       
@@ -177,7 +152,7 @@ export function ChatPage() {
     try {
       // Usa il token RSM corretto per caricare messaggi PRIMA del primo attuale
       const result = await loadMessagesForContact(client, jid, {
-        maxResults: 50,
+        maxResults: PAGINATION.DEFAULT_MESSAGE_LIMIT,
         beforeToken: firstToken, // Usa il token salvato, non messageId!
       })
 
@@ -250,7 +225,7 @@ export function ChatPage() {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
             isAtBottomRef.current = true
           }
-        }, 100)
+        }, TIMEOUTS.AUTO_SCROLL_DELAY)
       }
     } catch (err) {
       console.error('Errore nel pull refresh:', err)
@@ -271,11 +246,11 @@ export function ChatPage() {
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight
 
-    // Considera "in fondo" se entro 100px dal bottom
-    isAtBottomRef.current = distanceFromBottom < 100
+    // Considera "in fondo" se entro la soglia dal bottom
+    isAtBottomRef.current = distanceFromBottom < PAGINATION.SCROLL_TO_BOTTOM_THRESHOLD
 
     // Trigger load more se vicino al top (ma non durante pull refresh)
-    if (scrollTop < 200 && hasMoreMessages && !isLoadingMore && !isPullRefreshing) {
+    if (scrollTop < PAGINATION.LOAD_MORE_THRESHOLD && hasMoreMessages && !isLoadingMore && !isPullRefreshing) {
       const currentScrollHeight = scrollHeight
       lastScrollHeightRef.current = currentScrollHeight
       loadMoreMessages()
@@ -312,8 +287,8 @@ export function ChatPage() {
       e.preventDefault()
       
       // Mostra l'indicatore di pull con opacità crescente
-      const opacity = Math.min(pullDistance / 80, 1)
-      const translateY = Math.min(pullDistance * 0.5, 60)
+      const opacity = Math.min(pullDistance / PULL_TO_REFRESH.THRESHOLD, 1)
+      const translateY = Math.min(pullDistance * 0.5, PULL_TO_REFRESH.MAX_DISTANCE)
       
       pullIndicatorRef.current.style.opacity = opacity.toString()
       pullIndicatorRef.current.style.transform = `translateY(-${translateY}px)`
@@ -324,10 +299,9 @@ export function ChatPage() {
     if (!isPulling.current || !pullIndicatorRef.current) return
     
     const pullDistance = pullStartY.current - pullCurrentY.current // Invertito
-    const threshold = 80 // Distanza minima per attivare il refresh
     
     // Reset indicatore con transizione
-    pullIndicatorRef.current.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+    pullIndicatorRef.current.style.transition = `opacity ${PULL_TO_REFRESH.ANIMATION_DURATION}ms ease, transform ${PULL_TO_REFRESH.ANIMATION_DURATION}ms ease`
     pullIndicatorRef.current.style.opacity = '0'
     pullIndicatorRef.current.style.transform = 'translateY(0)'
     
@@ -335,10 +309,10 @@ export function ChatPage() {
       if (pullIndicatorRef.current) {
         pullIndicatorRef.current.style.transition = 'none'
       }
-    }, 300)
+    }, PULL_TO_REFRESH.ANIMATION_DURATION)
     
     // Se superato il threshold, attiva il refresh
-    if (pullDistance > threshold) {
+    if (pullDistance > PULL_TO_REFRESH.THRESHOLD) {
       handlePullRefresh()
     }
     
@@ -412,9 +386,6 @@ export function ChatPage() {
     return conversation?.displayName || jid.split('@')[0] || 'Chat'
   }
 
-  const formatMessageTime = (date: Date) => {
-    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-  }
 
   // Non bloccare il rendering se non connessi - lascia che il LoginPopup gestisca l'autenticazione
   // Mostra l'interfaccia anche se non connessi (durante inizializzazione o riconnessione)
@@ -558,26 +529,3 @@ export function ChatPage() {
   )
 }
 
-function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  )
-}
-
-function formatDateSeparator(date: Date): string {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
-  if (messageDate.getTime() === today.getTime()) {
-    return 'Oggi'
-  } else if (messageDate.getTime() === yesterday.getTime()) {
-    return 'Ieri'
-  } else {
-    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
-  }
-}

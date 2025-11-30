@@ -2,10 +2,16 @@
  * Servizio per gestire la persistenza delle credenziali durante la sessione del browser.
  * Usa sessionStorage per salvare temporaneamente JID e password.
  * Le credenziali vengono cancellate quando si chiude la tab/browser.
+ * 
+ * NOTA SICUREZZA: Le credenziali sono salvate in sessionStorage, che viene cancellato
+ * alla chiusura della tab/browser. Questo è un compromesso tra sicurezza e UX.
+ * Per maggiore sicurezza, considerare l'uso di un sistema di autenticazione più robusto.
  */
 
-const STORAGE_KEY_JID = 'xmpp_jid'
-const STORAGE_KEY_PASSWORD = 'xmpp_password'
+import { STORAGE_KEYS } from '../config/constants'
+
+const STORAGE_KEY_JID = STORAGE_KEYS.JID
+const STORAGE_KEY_PASSWORD = STORAGE_KEYS.PASSWORD
 
 export interface SavedCredentials {
   jid: string

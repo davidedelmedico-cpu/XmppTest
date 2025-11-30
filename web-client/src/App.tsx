@@ -3,6 +3,7 @@ import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { ConversationsPage } from './pages/ConversationsPage'
 import { ChatPage } from './pages/ChatPage'
 import { LoginPopup } from './components/LoginPopup'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './App.css'
 
 function AppRoutes() {
@@ -28,11 +29,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <XmppProvider>
-      <HashRouter>
-        <AppRoutes />
-      </HashRouter>
-    </XmppProvider>
+    <ErrorBoundary>
+      <XmppProvider>
+        <HashRouter>
+          <AppRoutes />
+        </HashRouter>
+      </XmppProvider>
+    </ErrorBoundary>
   )
 }
 

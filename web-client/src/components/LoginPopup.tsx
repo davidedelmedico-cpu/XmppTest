@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useXmpp } from '../contexts/XmppContext'
+import { isValidJid, parseJid } from '../utils/jid'
+import { TEXT_LIMITS } from '../config/constants'
 import './LoginPopup.css'
 
 type AsyncState = 'idle' | 'pending' | 'success' | 'error'
@@ -15,6 +17,9 @@ const initialStatus: FormStatus = { state: 'idle' }
 
 /**
  * Valida e normalizza un username completo (formato: username@server.com)
+ * 
+ * @param input - Il JID da validare e normalizzare
+ * @returns Oggetto con validità, JID normalizzato e eventuale errore
  */
 const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string; error?: string } => {
   const trimmed = input.trim()
@@ -23,34 +28,39 @@ const validateAndNormalizeJid = (input: string): { valid: boolean; jid?: string;
     return { valid: false, error: 'Inserisci il tuo username completo.' }
   }
 
-  if (!trimmed.includes('@')) {
-    return { valid: false, error: 'Inserisci il tuo username completo nel formato: username@server.com' }
-  }
-
-  const parts = trimmed.split('@')
-  if (parts.length !== 2) {
-    return { valid: false, error: 'Formato non valido. Usa: username@server.com' }
-  }
-
-  const [local, domainPart] = parts
-  const [domain, resource] = domainPart.split('/')
-
-  if (local && local.length > 0) {
-    if (local.length > 1023) {
+  if (!isValidJid(trimmed)) {
+    if (!trimmed.includes('@')) {
+      return { valid: false, error: 'Inserisci il tuo username completo nel formato: username@server.com' }
+    }
+    
+    const parts = trimmed.split('@')
+    if (parts.length !== 2) {
+      return { valid: false, error: 'Formato non valido. Usa: username@server.com' }
+    }
+    
+    const [local, domainPart] = parts
+    const [domain] = domainPart.split('/')
+    
+    if (local && local.length > TEXT_LIMITS.MAX_JID_LENGTH) {
       return { valid: false, error: 'Lo username è troppo lungo.' }
     }
+    
+    if (!domain || domain.length === 0) {
+      return { valid: false, error: 'Inserisci anche il server (esempio: username@server.com).' }
+    }
+    
+    if (domain.length > TEXT_LIMITS.MAX_JID_LENGTH) {
+      return { valid: false, error: 'Il nome del server è troppo lungo.' }
+    }
+    
+    return { valid: false, error: 'Formato JID non valido.' }
   }
 
-  if (!domain || domain.length === 0) {
-    return { valid: false, error: 'Inserisci anche il server (esempio: username@server.com).' }
-  }
-
-  if (domain.length > 1023) {
-    return { valid: false, error: 'Il nome del server è troppo lungo.' }
-  }
-
-  const normalizedDomain = domain.toLowerCase()
-  const normalizedJid = local ? `${local}@${normalizedDomain}${resource ? `/${resource}` : ''}` : normalizedDomain
+  // JID valido, normalizzalo
+  const parsed = parseJid(trimmed)
+  const normalizedJid = parsed.username 
+    ? `${parsed.username}@${parsed.domain}${parsed.resource ? `/${parsed.resource}` : ''}`
+    : parsed.domain
 
   return { valid: true, jid: normalizedJid }
 }
