@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { ConversationsPage } from './pages/ConversationsPage'
 import { ChatPage } from './pages/ChatPage'
@@ -29,9 +29,9 @@ function AppRoutes() {
 function App() {
   return (
     <XmppProvider>
-      <BrowserRouter basename="/XmppTest">
+      <HashRouter>
         <AppRoutes />
-      </BrowserRouter>
+      </HashRouter>
     </XmppProvider>
   )
 }
