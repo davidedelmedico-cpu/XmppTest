@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { LoginPage } from './pages/LoginPage'
 import { ConversationsPage } from './pages/ConversationsPage'
+import { ChatPage } from './pages/ChatPage'
 import './App.css'
 
 function InitializingScreen() {
@@ -55,6 +56,7 @@ function AppRoutes() {
       {isConnected ? (
         <>
           <Route path="/conversations" element={<ConversationsPage />} />
+          <Route path="/chat/:jid" element={<ChatPage />} />
           <Route path="*" element={<Navigate to="/conversations" replace />} />
         </>
       ) : (
