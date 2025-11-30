@@ -207,26 +207,16 @@ export function ChatPage() {
       return
     }
 
-    // Se non siamo connessi e non stiamo inizializzando, vai alla lista
-    if (!client || !isConnected) {
-      // Ma non redirigere se stiamo ancora inizializzando la connessione
-      // (succede durante il refresh del browser)
-      if (!client && !isConnected) {
-        // Aspetta un po' prima di redirigere, per dare tempo alla connessione di stabilirsi
-        const timer = setTimeout(() => {
-          if (!client && !isConnected) {
-            navigate('/conversations')
-          }
-        }, 2000) // Aspetta 2 secondi
-        return () => clearTimeout(timer)
-      }
-      return
+    // Se client e connessione sono disponibili, carica i messaggi
+    if (client && isConnected) {
+      loadInitialMessages()
+      
+      // Marca conversazione come letta
+      markConversationAsRead(jid)
     }
-
-    loadInitialMessages()
     
-    // Marca conversazione come letta
-    markConversationAsRead(jid)
+    // NON redirigere durante l'inizializzazione - il popup di login gestirà l'autenticazione
+    // e la pagina rimarrà sulla rotta corrente
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jid, client, isConnected])
 
@@ -426,10 +416,8 @@ export function ChatPage() {
     return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
   }
 
-  if (!isConnected) {
-    return null
-  }
-
+  // Non bloccare il rendering se non connessi - lascia che il LoginPopup gestisca l'autenticazione
+  // Mostra l'interfaccia anche se non connessi (durante inizializzazione o riconnessione)
   return (
     <div className="chat-page">
       {/* Header */}
