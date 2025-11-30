@@ -59,18 +59,18 @@ function groupMessagesByContact(messages: MAMResult[], myJid: string): Map<strin
     return (!type || type === 'chat') && body && body.trim().length > 0
   })
 
-  // Raggruppa per contatto
-  for (const msg of chatMessages) {
-    const contactJid = extractContactJid(msg, myJid)
-    if (!contactJid || contactJid === normalizeJid(myJid)) {
-      continue // Skip messaggi a se stesso o senza contatto valido
-    }
-
-    if (!groups.has(contactJid)) {
-      groups.set(contactJid, [])
-    }
-    groups.get(contactJid)!.push(msg)
+// Raggruppa per contatto
+for (const msg of chatMessages) {
+  const contactJid = extractContactJid(msg, myJid)
+  if (!contactJid) {
+    continue // Skip messaggi senza contatto valido
   }
+
+  if (!groups.has(contactJid)) {
+    groups.set(contactJid, [])
+  }
+  groups.get(contactJid)!.push(msg)
+}
 
   // Per ogni gruppo, prendi il messaggio più recente
   const lastMessages = new Map<string, MAMResult>()
@@ -287,12 +287,12 @@ export async function updateConversationOnNewMessage(
   const from = message.from || ''
   const to = message.to || ''
 
-  // Determina il JID del contatto
-  const contactJid = from.startsWith(myBareJid) ? normalizeJid(to) : normalizeJid(from)
+// Determina il JID del contatto
+const contactJid = from.startsWith(myBareJid) ? normalizeJid(to) : normalizeJid(from)
 
-  if (!contactJid || contactJid === myBareJid) {
-    return // Skip messaggi a se stesso
-  }
+if (!contactJid) {
+  return // Skip messaggi senza contatto valido
+}
 
   // Estrai timestamp
   const delay = message.delay
