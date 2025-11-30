@@ -63,10 +63,12 @@
 .profile-page__save-section {
   margin-top: 2rem;
   margin-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
-  padding: 0;
+  padding: 2rem;
+  background: #ff0000;
   /* Forza stesso touch-action del contenitore scrollabile */
   touch-action: pan-y;
   -ms-touch-action: pan-y;
+  min-height: 200px;
 }
 
 .profile-page__loading,
