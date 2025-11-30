@@ -79,7 +79,8 @@ textarea {
 /* Contenitori scrollabili - solo questi possono scrollare */
 .chat-page__messages,
 .conversations-list__items,
-.conversations-page__sidebar-nav {
+.conversations-page__sidebar-nav,
+.profile-page__content {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;

@@ -55,7 +55,10 @@
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem 1rem;
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
+  /* Padding extra in fondo per assicurare che il bottone sia raggiungibile */
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
+  /* Assicura che il contenuto possa scrollare anche se è più alto del viewport */
+  min-height: 0;
 }
 
 .profile-page__loading,
