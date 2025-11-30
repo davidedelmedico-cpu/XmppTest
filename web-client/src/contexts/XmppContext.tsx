@@ -9,7 +9,7 @@ import {
   enrichWithRoster,
   updateConversationOnNewMessage,
 } from '../services/conversations'
-import { getConversations, type Conversation, updateConversation, clearConversations, saveConversations, saveMetadata } from '../services/conversations-db'
+import { getConversations, type Conversation, updateConversation, clearConversations, saveConversations, saveMetadata, removeConversation } from '../services/conversations-db'
 import { saveCredentials, loadCredentials, clearCredentials } from '../services/auth-storage'
 import { handleIncomingMessage } from '../services/messages'
 
@@ -29,6 +29,7 @@ interface XmppContextType {
   refreshConversations: () => Promise<void>
   subscribeToMessages: (callback: MessageCallback) => () => void
   markConversationAsRead: (jid: string) => Promise<void>
+  removeConversation: (jid: string) => Promise<void>
 }
 
 const XmppContext = createContext<XmppContextType | undefined>(undefined)
@@ -286,6 +287,17 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     }
   }, []) // Nessuna dependency: funzioni pure
 
+  const removeConversationFromList = useCallback(async (conversationJid: string) => {
+    try {
+      await removeConversation(conversationJid)
+      const updated = await getConversations()
+      setConversations(updated)
+    } catch (error) {
+      console.error('Errore nella rimozione conversazione:', error)
+      throw error
+    }
+  }, []) // Nessuna dependency: funzioni pure
+
   return (
     <XmppContext.Provider
       value={{
@@ -302,6 +314,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         refreshConversations,
         subscribeToMessages,
         markConversationAsRead,
+        removeConversation: removeConversationFromList,
       }}
     >
       {children}

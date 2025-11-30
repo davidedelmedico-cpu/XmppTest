@@ -4,15 +4,18 @@ import { useXmpp } from '../contexts/XmppContext'
 import { truncateMessage, getInitials } from '../utils/message'
 import { formatConversationTimestamp } from '../utils/date'
 import { PULL_TO_REFRESH } from '../config/constants'
+import { ConfirmDialog } from './ConfirmDialog'
 import './ConversationsList.css'
 
 // formatConversationTimestamp è usato alla riga 234 nel rendering del timestamp
 
 export function ConversationsList() {
   const navigate = useNavigate()
-  const { conversations, isLoading, error, refreshConversations } = useXmpp()
+  const { conversations, isLoading, error, refreshConversations, removeConversation } = useXmpp()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
+  const [contextMenu, setContextMenu] = useState<{ jid: string; x: number; y: number } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   
@@ -129,8 +132,96 @@ export function ConversationsList() {
 
 
   const handleConversationClick = (jid: string) => {
+    // Non navigare se c'è un menu contestuale aperto
+    if (contextMenu) {
+      return
+    }
     navigate(`/chat/${encodeURIComponent(jid)}`)
   }
+
+  // Gestione long press per menu contestuale
+  const longPressTimerRef = useRef<number | null>(null)
+  const longPressJidRef = useRef<string | null>(null)
+
+  const handleConversationTouchStart = (e: React.TouchEvent, jid: string) => {
+    // Previeni la propagazione per evitare conflitti con pull-to-refresh
+    e.stopPropagation()
+    
+    // Reset timer precedente se esiste
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+    }
+    
+    longPressJidRef.current = jid
+    
+    longPressTimerRef.current = window.setTimeout(() => {
+      // Long press rilevato - mostra menu contestuale
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setContextMenu({
+        jid,
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      })
+      longPressJidRef.current = null
+    }, 500) // 500ms per long press
+  }
+
+  const handleConversationTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation()
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    longPressJidRef.current = null
+  }
+
+  const handleConversationTouchMove = (e: React.TouchEvent) => {
+    // Cancella long press se l'utente si muove
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    longPressJidRef.current = null
+    // Non fermare la propagazione qui per permettere lo scroll normale
+  }
+
+  const handleContextMenuClick = (action: 'delete') => {
+    if (!contextMenu) return
+    
+    if (action === 'delete') {
+      setConfirmDelete(contextMenu.jid)
+    }
+    
+    setContextMenu(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return
+    
+    try {
+      await removeConversation(confirmDelete)
+      setConfirmDelete(null)
+    } catch (error) {
+      console.error('Errore nella rimozione conversazione:', error)
+      // Potresti mostrare un messaggio di errore all'utente qui
+    }
+  }
+
+  // Chiudi menu contestuale quando si clicca fuori
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenu && !(e.target as HTMLElement).closest('.context-menu')) {
+        setContextMenu(null)
+      }
+    }
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => {
+        document.removeEventListener('click', handleClickOutside)
+      }
+    }
+  }, [contextMenu])
 
   if (error && conversations.length === 0) {
     return (
@@ -142,8 +233,46 @@ export function ConversationsList() {
     )
   }
 
+  // Trova il nome della conversazione per il dialog di conferma
+  const getConversationName = (jid: string) => {
+    const conv = conversations.find((c) => c.jid === jid)
+    return conv?.displayName || conv?.jid.split('@')[0] || jid
+  }
+
   return (
     <div ref={wrapperRef} className="conversations-list">
+      {/* Menu contestuale */}
+      {contextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            left: `${Math.min(contextMenu.x, window.innerWidth - 200)}px`,
+            top: `${Math.min(contextMenu.y, window.innerHeight - 100)}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="context-menu-item context-menu-item--danger"
+            onClick={() => handleContextMenuClick('delete')}
+            aria-label="Rimuovi conversazione"
+          >
+            Rimuovi conversazione
+          </button>
+        </div>
+      )}
+
+      {/* Dialog di conferma rimozione */}
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        title="Rimuovi conversazione"
+        message={`Sei sicuro di voler rimuovere la conversazione con ${confirmDelete ? getConversationName(confirmDelete) : ''}? Questa azione non può essere annullata.`}
+        confirmText="Rimuovi"
+        cancelText="Annulla"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Pull-to-refresh indicator - mostrato solo durante pull o refresh */}
         {(pullDistance > 5 || isRefreshing) && (
@@ -212,6 +341,17 @@ export function ConversationsList() {
               className="conversation-item"
               role="listitem"
               onClick={() => handleConversationClick(conv.jid)}
+              onTouchStart={(e) => handleConversationTouchStart(e, conv.jid)}
+              onTouchEnd={handleConversationTouchEnd}
+              onTouchMove={handleConversationTouchMove}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setContextMenu({
+                  jid: conv.jid,
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
