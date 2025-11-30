@@ -111,17 +111,20 @@ export async function loadMessagesForContact(
       }
     }
 
-    // Converti MAMResult in Message
+    // Converti TUTTI i messaggi MAMResult in Message (inclusi ping, token, visualizzazioni, ecc.)
     const myJid = client.jid || ''
-    const messages = result.results.map((msg) =>
+    const allMessages = result.results.map((msg) =>
       mamResultToMessage(msg, contactJid, myJid)
     )
 
-    // Salva nel database locale
-    await saveMessages(messages)
+    // Salva TUTTI i messaggi nel database (potrebbero servire per altre funzionalità)
+    await saveMessages(allMessages)
+
+    // Filtra solo messaggi di chat validi (con body) per la visualizzazione nella UI
+    const validMessages = allMessages.filter(msg => msg.body && msg.body.trim().length > 0)
 
     return {
-      messages,
+      messages: validMessages,
       firstToken: result.paging?.first,  // Token per paginare verso messaggi più vecchi
       lastToken: result.paging?.last,    // Token per paginare verso messaggi più recenti
       complete: result.complete ?? true,
@@ -188,7 +191,8 @@ export async function downloadAllMessagesFromServer(
         break
       }
 
-      // Converti in Message ma NON salvare
+      // Converti TUTTI i messaggi in Message (inclusi ping, token, visualizzazioni, ecc.)
+      // NON filtrare qui - salviamo tutto nel database
       const messages = result.results.map((msg) =>
         mamResultToMessage(msg, contactJid, myJid)
       )
@@ -320,6 +324,7 @@ export async function retryMessage(
 
 /**
  * Carica messaggi dal database locale (più veloce, per UI)
+ * Filtra automaticamente messaggi vuoti (senza body)
  */
 export async function getLocalMessages(
   conversationJid: string,
@@ -328,7 +333,9 @@ export async function getLocalMessages(
     before?: Date
   }
 ): Promise<Message[]> {
-  return getMessagesForConversation(normalizeJid(conversationJid), options)
+  const messages = await getMessagesForConversation(normalizeJid(conversationJid), options)
+  // Filtra messaggi vuoti (senza body) - possono essere ping, visualizzazioni, ecc.
+  return messages.filter(msg => msg.body && msg.body.trim().length > 0)
 }
 
 /**

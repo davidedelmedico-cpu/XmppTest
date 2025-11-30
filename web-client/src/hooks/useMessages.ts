@@ -167,11 +167,14 @@ export function useMessages({
     setError(null)
 
     try {
-      // Ricarica tutto dal server
+      // Ricarica tutto dal server (salva TUTTI i messaggi nel DB, inclusi ping/token/visualizzazioni)
       const serverMessages = await reloadAllMessagesFromServer(client, jid)
 
       if (isMountedRef.current) {
-        setMessages(serverMessages)
+        // Filtra solo messaggi con body per la visualizzazione nella UI
+        // (i messaggi vuoti rimangono salvati nel DB per altre funzionalità)
+        const messagesToShow = serverMessages.filter(msg => msg.body && msg.body.trim().length > 0)
+        setMessages(messagesToShow)
         setHasMoreMessages(false)
         setFirstToken(undefined)
       }
