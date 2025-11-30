@@ -44,6 +44,13 @@ Documentazione design e identità visiva di Alfred.
 - Breakpoint desktop (1024px)
 - Touch-friendly targets (48px min)
 
+### 5. Layout e Tecniche CSS
+- **Fondamentale: prediligere sempre le soluzioni flexbox**
+- Utilizzare flexbox come prima scelta per tutti i layout
+- Evitare float, table-layout e altre tecniche obsolete quando possibile
+- Flexbox per allineamento, distribuzione spazi e layout responsive
+- Grid solo quando necessario per layout complessi bidimensionali
+
 ## Colori
 
 ### Primari
