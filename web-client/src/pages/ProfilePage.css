@@ -53,22 +53,14 @@
 /* Content */
 .profile-page__content {
   flex: 1;
-  /* Le proprietà di overflow sono gestite da index.css (whitelist) */
-  padding: 1.5rem 1rem 0 1rem;
-  /* Assicura che il contenuto possa scrollare correttamente in flexbox */
   min-height: 0;
+  padding: 1.5rem 1rem;
 }
 
 /* Save Button Section */
 .profile-page__save-section {
   margin-top: 2rem;
-  margin-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
-  padding: 2rem;
-  background: #ff0000;
-  /* Forza stesso touch-action del contenitore scrollabile */
-  touch-action: pan-y;
-  -ms-touch-action: pan-y;
-  min-height: 200px;
+  margin-bottom: 2rem;
 }
 
 .profile-page__loading,
