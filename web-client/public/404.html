@@ -3,29 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/XmppTest/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Disabilita pull-to-refresh nativo su mobile -->
+    <style>
+      html, body {
+        overscroll-behavior-y: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior-y: none;
+      }
+    </style>
     <title>web-client</title>
-    <script>
-      // GitHub Pages SPA hack: Salva il path originale e redirige alla root
-      // L'index.html ripristinerà poi il path corretto
-      (function() {
-        var pathSegmentsToKeep = 1; // Per /XmppTest/
-        
-        var l = window.location;
-        // Salva il path completo (dopo /XmppTest/) in sessionStorage
-        var redirect = l.pathname.slice(0, l.pathname.lastIndexOf('/') + 1).split('/')
-          .slice(0, 1 + pathSegmentsToKeep).join('/') + '/';
-        
-        // Codifica il path reale come parametro di query
-        var query = '?p=' + encodeURIComponent(
-          l.pathname.slice(redirect.length - 1) + l.search
-        );
-        
-        // Redirige alla root con il parametro di query
-        l.replace(redirect + query);
-      })();
-    </script>
+    <script type="module" crossorigin src="/XmppTest/assets/index-C4mKlsHE.js"></script>
+    <link rel="stylesheet" crossorigin href="/XmppTest/assets/index-Ba0rGsld.css">
   </head>
   <body>
+    <div id="root"></div>
   </body>
 </html>
