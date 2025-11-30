@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useXmpp } from '../contexts/XmppContext'
+import { useConnection } from '../contexts/ConnectionContext'
 import { isValidJid, parseJid } from '../utils/jid'
 import { TEXT_LIMITS } from '../config/constants'
 import './LoginPopup.css'
@@ -70,7 +70,7 @@ interface LoginPopupProps {
 }
 
 export function LoginPopup({ isInitializing }: LoginPopupProps) {
-  const { connect, jid } = useXmpp()
+  const { connect, jid } = useConnection()
   const [loginForm, setLoginForm] = useState({
     jid: jid || '',  // Pre-compila con ultimo JID se disponibile
     password: ''

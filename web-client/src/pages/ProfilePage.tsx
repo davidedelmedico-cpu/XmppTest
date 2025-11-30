@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useXmpp } from '../contexts/XmppContext'
+import { useConnection } from '../contexts/ConnectionContext'
 import { getVCard, publishVCard } from '../services/vcard'
 import { compressAvatar, validateImageFile } from '../utils/image'
 import './ProfilePage.css'
 
 export function ProfilePage() {
   const navigate = useNavigate()
-  const { client, isConnected, jid } = useXmpp()
+  const { client, isConnected, jid } = useConnection()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

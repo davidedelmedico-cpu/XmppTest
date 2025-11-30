@@ -1,6 +1,10 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { XmppProvider, useXmpp } from './contexts/XmppContext'
+import { AuthProvider } from './contexts/AuthContext'
+import { ConnectionProvider, useConnection } from './contexts/ConnectionContext'
+import { ConversationsProvider } from './contexts/ConversationsContext'
+import { MessagingProvider } from './contexts/MessagingContext'
+import { AppInitializerWithCallback } from './components/AppInitializer'
 import { LoginPopup } from './components/LoginPopup'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SplashScreen } from './components/SplashScreen'
@@ -35,8 +39,8 @@ const PageLoader = () => (
   </div>
 )
 
-function AppRoutes() {
-  const { isConnected, isInitializing } = useXmpp()
+function AppRoutes({ isInitializing }: { isInitializing: boolean }) {
+  const { isConnected } = useConnection()
 
   return (
     <>
@@ -69,7 +73,6 @@ function App() {
   useEffect(() => {
     // Nascondi splash screen dopo il caricamento iniziale
     if (document.readyState === 'complete') {
-      // Usa setTimeout per evitare setState sincrono nell'effetto
       setTimeout(() => setShowSplash(false), 0)
     } else {
       const handleLoad = () => setShowSplash(false)
@@ -81,11 +84,23 @@ function App() {
   return (
     <ErrorBoundary>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      <XmppProvider>
-        <HashRouter>
-          <AppRoutes />
-        </HashRouter>
-      </XmppProvider>
+      
+      {/* Context orchestration: Auth → Connection → Conversations → Messaging */}
+      <AuthProvider>
+        <ConnectionProvider>
+          <ConversationsProvider>
+            <MessagingProvider>
+              <HashRouter>
+                <AppInitializerWithCallback>
+                  {({ isInitializing }) => (
+                    <AppRoutes isInitializing={isInitializing} />
+                  )}
+                </AppInitializerWithCallback>
+              </HashRouter>
+            </MessagingProvider>
+          </ConversationsProvider>
+        </ConnectionProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

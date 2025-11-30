@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useXmpp } from '../contexts/XmppContext'
+import { useConnection } from '../contexts/ConnectionContext'
+import { useConversations } from '../contexts/ConversationsContext'
+import { useMessaging } from '../contexts/MessagingContext'
 import { useMessages } from '../hooks/useMessages'
 import { useChatScroll } from '../hooks/useChatScroll'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
@@ -20,7 +22,9 @@ import './ChatPage.css'
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
   const navigate = useNavigate()
-  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, reloadConversationsFromDB, jid: myJid } = useXmpp()
+  const { client, isConnected, jid: myJid } = useConnection()
+  const { conversations, markAsRead, reloadFromDB } = useConversations()
+  const { subscribeToMessages } = useMessaging()
   
   const jid = useMemo(() => encodedJid ? decodeURIComponent(encodedJid) : '', [encodedJid])
   const conversation = useMemo(() => conversations.find((c) => c.jid === jid), [conversations, jid])
@@ -95,7 +99,7 @@ export function ChatPage() {
             await reloadAllMessages()
             
             // Ricarica conversazioni dal database (con vCard aggiornato)
-            await reloadConversationsFromDB()
+            await reloadFromDB()
             
             // Scroll in fondo dopo il refresh
             setTimeout(() => {
@@ -176,19 +180,19 @@ export function ChatPage() {
       if (contactJid === jid.toLowerCase()) {
         // Aggiorna messaggi (gestito internamente da useMessages tramite subscribe)
         // Marca come letta
-        markConversationAsRead(jid)
+        markAsRead(jid)
       }
     })
 
     return unsubscribe
-  }, [jid, myJid, subscribeToMessages, markConversationAsRead])
+  }, [jid, myJid, subscribeToMessages, markAsRead])
 
   // Marca conversazione come letta quando si apre
   useEffect(() => {
     if (jid && client && isConnected) {
-      markConversationAsRead(jid)
+      markAsRead(jid)
     }
-  }, [jid, client, isConnected, markConversationAsRead])
+  }, [jid, client, isConnected, markAsRead])
 
   // Auto-focus su input quando la chat si carica
   useEffect(() => {

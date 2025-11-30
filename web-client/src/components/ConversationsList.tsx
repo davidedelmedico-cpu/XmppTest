@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useXmpp } from '../contexts/XmppContext'
+import { useConversations } from '../contexts/ConversationsContext'
 import { truncateMessage, getInitials } from '../utils/message'
 import { formatConversationTimestamp } from '../utils/date'
 import { PULL_TO_REFRESH } from '../config/constants'
@@ -10,7 +10,7 @@ import './ConversationsList.css'
 
 export function ConversationsList() {
   const navigate = useNavigate()
-  const { conversations, isLoading, error, refreshAllConversations } = useXmpp()
+  const { conversations, isLoading, error, refreshAll } = useConversations()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -22,11 +22,11 @@ export function ConversationsList() {
   const isDragging = useRef<boolean>(false)
   const currentPullDistance = useRef<number>(0)
   
-  // Mantieni riferimento aggiornato a refreshAllConversations senza causare re-render
-  const refreshAllConversationsRef = useRef(refreshAllConversations)
+  // Mantieni riferimento aggiornato a refreshAll senza causare re-render
+  const refreshAllRef = useRef(refreshAll)
   useEffect(() => {
-    refreshAllConversationsRef.current = refreshAllConversations
-  }, [refreshAllConversations])
+    refreshAllRef.current = refreshAll
+  }, [refreshAll])
   
   // Mantieni riferimento aggiornato allo stato di caricamento
   const isLoadingRef = useRef(isLoading)
@@ -87,7 +87,7 @@ export function ConversationsList() {
         // Trigger refresh se trascinato abbastanza
         setIsRefreshing(true)
         window.dispatchEvent(new CustomEvent('refresh-start'))
-        refreshAllConversationsRef.current()
+        refreshAllRef.current()
           .then(() => {
             setTimeout(() => {
               setIsRefreshing(false)

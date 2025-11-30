@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useXmpp } from '../contexts/XmppContext'
+import { useConnection } from '../contexts/ConnectionContext'
 import { ConversationsList } from '../components/ConversationsList'
 import { NewConversationPopup } from '../components/NewConversationPopup'
 import './ConversationsPage.css'
 
 export function ConversationsPage() {
   const navigate = useNavigate()
-  const { isConnected, disconnect, jid, client } = useXmpp()
+  const { isConnected, disconnect, jid, client } = useConnection()
   const [showMenu, setShowMenu] = useState(false)
   const [showNewConversation, setShowNewConversation] = useState(false)
   const [userAvatar, setUserAvatar] = useState<{ data?: string; type?: string } | null>(null)
