@@ -76,19 +76,7 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
     return unsubscribe
   }, [])
 
-  // Auto-login con credenziali salvate
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const saved = loadCredentials()
-      if (saved) {
-        // Non aspettare il risultato per evitare blocchi
-        void login(saved.jid, saved.password)
-      }
-    }
-
-    initializeAuth()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Esegui solo una volta al mount
+  // Auto-login rimosso da qui - viene fatto dopo la definizione di login
 
   // Gestione eventi XMPP
   useEffect(() => {
@@ -193,6 +181,14 @@ export function XmppMediatorProvider({ children }: { children: ReactNode }) {
       return false
     }
   }, [])
+
+  // Auto-login con credenziali salvate (dopo definizione di login)
+  useEffect(() => {
+    const saved = loadCredentials()
+    if (saved) {
+      void login(saved.jid, saved.password)
+    }
+  }, [login])
 
   const logout = useCallback(() => {
     if (client) {
