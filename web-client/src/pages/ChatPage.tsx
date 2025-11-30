@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
-import { getLocalMessages } from '../services/messages'
 import { useMessages } from '../hooks/useMessages'
 import { useChatScroll } from '../hooks/useChatScroll'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
