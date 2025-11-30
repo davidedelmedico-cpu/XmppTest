@@ -130,8 +130,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
           ? to.split('/')[0].toLowerCase() 
           : from.split('/')[0].toLowerCase()
 
-        // 2. Salva messaggio nel database e ottieni il messaggio salvato
-        const savedMessage = await handleIncomingMessage(message, jid, contactJid)
+        // 2. Salva messaggio nel database
+        await handleIncomingMessage(message, jid, contactJid)
 
         // 3. Aggiorna lista conversazioni
         await updateConversationOnNewMessage(message, jid)
