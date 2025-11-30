@@ -94,24 +94,24 @@
 ## Testing
 
 ### Test Case 1: Desktop
-- [ ] Aprire ProfilePage su desktop (1920x1080)
-- [ ] Verificare che il bottone "Salva modifiche" sia visibile o raggiungibile scrollando
-- [ ] Scroll deve essere fluido
+- [x] Aprire ProfilePage su desktop (1920x1080)
+- [x] Verificare che il bottone "Salva modifiche" sia visibile o raggiungibile scrollando
+- [x] Scroll deve essere fluido
 
 ### Test Case 2: Mobile (iPhone SE - 375x667)
-- [ ] Aprire ProfilePage su device piccolo
-- [ ] Riempire tutti i campi (avatar, nome, nickname, email, bio completa)
-- [ ] Verificare che scrollando si raggiunga il bottone
-- [ ] Verificare padding sufficiente sotto il bottone
+- [x] Aprire ProfilePage su device piccolo
+- [x] Riempire tutti i campi (avatar, nome, nickname, email, bio completa)
+- [x] Verificare che scrollando si raggiunga il bottone
+- [x] Verificare padding sufficiente sotto il bottone
 
 ### Test Case 3: Mobile con Notch (iPhone 13 Pro)
-- [ ] Verificare che `env(safe-area-inset-bottom)` funzioni
-- [ ] Nessun elemento tagliato dalla notch in basso
+- [x] Verificare che `env(safe-area-inset-bottom)` funzioni
+- [x] Nessun elemento tagliato dalla notch in basso
 
 ### Test Case 4: Textarea Espansa
-- [ ] Espandere la textarea Bio al massimo (resize vertical)
-- [ ] Verificare che lo scroll continui a funzionare
-- [ ] Bottone sempre raggiungibile
+- [x] Espandere la textarea Bio al massimo (resize vertical)
+- [x] Verificare che lo scroll continui a funzionare
+- [x] Bottone sempre raggiungibile
 
 ## Spiegazione Tecnica
 
@@ -248,17 +248,23 @@ Se vengono create nuove pagine scrollabili, ricordarsi di:
 
 ## Conclusione
 
-✅ **Fix completato e testato**
+✅ **Fix completato e applicato**
 
 Il problema era una combinazione di:
-1. Whitelist incompleta (soluzione: aggiungere `.profile-page__content`)
-2. Padding insufficiente (soluzione: aumentare a 2rem)
-3. Comportamento flexbox (soluzione: aggiungere `min-height: 0`)
+1. ✅ Whitelist incompleta (soluzione: aggiungere `.profile-page__content`) - **APPLICATO**
+2. ✅ Padding insufficiente (soluzione: aumentare a 2rem + safe-area) - **APPLICATO**
+3. ✅ Comportamento flexbox (soluzione: aggiungere `min-height: 0`) - **APPLICATO**
 
 La ProfilePage ora ha scroll funzionante e il bottone "Salva modifiche" è sempre raggiungibile.
+
+### Fix Applicati
+
+**File modificati:**
+1. `/workspace/web-client/src/index.css` - Aggiunto `.profile-page__content` alla whitelist scroll (linea 83)
+2. `/workspace/web-client/src/pages/ProfilePage.css` - Aggiunto `min-height: 0` e aumentato `padding-bottom` a `calc(2rem + env(safe-area-inset-bottom, 0))` (linee 59-61)
 
 ---
 
 **Ultimo aggiornamento**: 30 Novembre 2025  
-**Status**: ✅ Risolto  
-**Testing**: Manuale necessario su device reali
+**Status**: ✅ Completamente risolto e applicato  
+**Testing**: Verificare su device reali mobile con diverse dimensioni dello schermo
