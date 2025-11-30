@@ -64,6 +64,9 @@
   margin-top: 2rem;
   margin-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
   padding: 0;
+  /* Forza stesso touch-action del contenitore scrollabile */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 .profile-page__loading,
@@ -104,6 +107,9 @@
   border-radius: 12px;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Forza stesso touch-action del contenitore scrollabile */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 .profile-page__avatar {
@@ -149,6 +155,9 @@
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Forza stesso touch-action del contenitore scrollabile */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 .profile-page__jid label {
@@ -173,6 +182,9 @@
   padding: 1.5rem 1.25rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Forza stesso touch-action del contenitore scrollabile */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 .profile-page__field {
@@ -233,6 +245,9 @@
   font-size: 0.875rem;
   text-align: center;
   animation: slideIn 0.3s ease-out;
+  /* Forza stesso touch-action del contenitore scrollabile */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 @keyframes slideIn {
