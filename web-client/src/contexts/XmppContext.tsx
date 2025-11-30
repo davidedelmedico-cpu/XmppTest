@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { Agent } from 'stanza'
 import type { ReceivedMessage } from 'stanza/protocol'
@@ -242,16 +242,16 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const subscribeToMessages = (callback: MessageCallback) => {
+  const subscribeToMessages = useCallback((callback: MessageCallback) => {
     messageCallbacks.current.add(callback)
     
     // Ritorna una funzione per unsubscribe
     return () => {
       messageCallbacks.current.delete(callback)
     }
-  }
+  }, []) // Nessuna dependency: usa solo ref
 
-  const markConversationAsRead = async (conversationJid: string) => {
+  const markConversationAsRead = useCallback(async (conversationJid: string) => {
     try {
       await updateConversation(conversationJid, { unreadCount: 0 })
       const updated = await getConversations()
@@ -259,7 +259,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Errore nel marcare conversazione come letta:', error)
     }
-  }
+  }, []) // Nessuna dependency: funzioni pure
 
   return (
     <XmppContext.Provider

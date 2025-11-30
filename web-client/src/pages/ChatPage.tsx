@@ -7,7 +7,7 @@ import './ChatPage.css'
 export function ChatPage() {
   const { jid: encodedJid } = useParams<{ jid: string }>()
   const navigate = useNavigate()
-  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead } = useXmpp()
+  const { client, isConnected, conversations, subscribeToMessages, markConversationAsRead, jid: myJid } = useXmpp()
   
   const jid = encodedJid ? decodeURIComponent(encodedJid) : ''
   const conversation = conversations.find((c) => c.jid === jid)
@@ -38,13 +38,13 @@ export function ChatPage() {
 
   // Subscribe a messaggi real-time
   useEffect(() => {
-    if (!jid) return
+    if (!jid || !myJid) return
 
     const unsubscribe = subscribeToMessages(async (message) => {
       if (!isMountedRef.current) return
 
       // Controlla se il messaggio è per questa conversazione
-      const myBareJid = client?.jid?.split('/')[0].toLowerCase()
+      const myBareJid = myJid.split('/')[0].toLowerCase()
       const from = message.from?.split('/')[0].toLowerCase() || ''
       const to = message.to?.split('/')[0].toLowerCase() || ''
       const contactJid = from === myBareJid ? to : from
@@ -62,7 +62,7 @@ export function ChatPage() {
     })
 
     return unsubscribe
-  }, [jid, subscribeToMessages])
+  }, [jid, myJid, subscribeToMessages, markConversationAsRead])
 
   // Auto-focus su input quando la chat si carica
   useEffect(() => {
