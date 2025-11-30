@@ -4,6 +4,8 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 export interface Conversation {
   jid: string
   displayName?: string
+  avatarData?: string // Base64 image data
+  avatarType?: string // MIME type (es: 'image/png')
   lastMessage: {
     body: string
     timestamp: Date
@@ -26,6 +28,17 @@ export interface Message {
   tempId?: string // ID temporaneo per optimistic updates (prima della conferma server)
 }
 
+export interface VCardCache {
+  jid: string
+  fullName?: string
+  nickname?: string
+  photoData?: string // Base64 image data
+  photoType?: string // MIME type
+  email?: string
+  description?: string
+  lastUpdated: Date
+}
+
 interface ConversationsDB extends DBSchema {
   conversations: {
     key: string // jid
@@ -41,6 +54,11 @@ interface ConversationsDB extends DBSchema {
       'by-conversation-timestamp': [string, Date] // Compound index per query efficienti
       'by-tempId': string // Index per lookup veloce di messaggi temporanei
     }
+  }
+  vcards: {
+    key: string // jid
+    value: VCardCache
+    indexes: { 'by-lastUpdated': Date }
   }
   metadata: {
     key: string
@@ -59,7 +77,7 @@ export async function getDB(): Promise<IDBPDatabase<ConversationsDB>> {
     return dbInstance
   }
 
-  dbInstance = await openDB<ConversationsDB>('conversations-db', 2, {
+  dbInstance = await openDB<ConversationsDB>('conversations-db', 3, {
     upgrade(db, oldVersion) {
       // Versione 1: Store originali
       if (oldVersion < 1) {
@@ -82,6 +100,14 @@ export async function getDB(): Promise<IDBPDatabase<ConversationsDB>> {
         messagesStore.createIndex('by-timestamp', 'timestamp')
         messagesStore.createIndex('by-conversation-timestamp', ['conversationJid', 'timestamp'])
         messagesStore.createIndex('by-tempId', 'tempId', { unique: false })
+      }
+
+      // Versione 3: Aggiungi store vcard
+      if (oldVersion < 3) {
+        const vcardStore = db.createObjectStore('vcards', {
+          keyPath: 'jid',
+        })
+        vcardStore.createIndex('by-lastUpdated', 'lastUpdated')
       }
     },
   })
@@ -472,5 +498,93 @@ export async function clearMessagesForConversation(conversationJid: string): Pro
     cursor = await cursor.continue()
   }
 
+  await tx.done
+}
+
+// ============================================================================
+// VCARD CRUD OPERATIONS
+// ============================================================================
+
+/**
+ * Salva un vCard nella cache locale
+ */
+export async function saveVCard(vcard: VCardCache): Promise<void> {
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readwrite')
+  await tx.store.put(vcard)
+  await tx.done
+}
+
+/**
+ * Salva multipli vCard nella cache locale
+ */
+export async function saveVCards(vcards: VCardCache[]): Promise<void> {
+  if (vcards.length === 0) return
+
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readwrite')
+  
+  for (const vcard of vcards) {
+    await tx.store.put(vcard)
+  }
+  
+  await tx.done
+}
+
+/**
+ * Recupera un vCard dalla cache locale
+ */
+export async function getVCard(jid: string): Promise<VCardCache | null> {
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readonly')
+  const vcard = await tx.store.get(jid)
+  await tx.done
+  
+  if (!vcard) return null
+  
+  // Converti Date se serializzata
+  return {
+    ...vcard,
+    lastUpdated: vcard.lastUpdated instanceof Date 
+      ? vcard.lastUpdated 
+      : new Date(vcard.lastUpdated)
+  }
+}
+
+/**
+ * Recupera tutti i vCard dalla cache locale
+ */
+export async function getAllVCards(): Promise<VCardCache[]> {
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readonly')
+  const vcards = await tx.store.getAll()
+  await tx.done
+  
+  // Converti Date se serializzate
+  return vcards.map(vcard => ({
+    ...vcard,
+    lastUpdated: vcard.lastUpdated instanceof Date 
+      ? vcard.lastUpdated 
+      : new Date(vcard.lastUpdated)
+  }))
+}
+
+/**
+ * Elimina un vCard dalla cache
+ */
+export async function deleteVCard(jid: string): Promise<void> {
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readwrite')
+  await tx.store.delete(jid)
+  await tx.done
+}
+
+/**
+ * Pulisce tutti i vCard dalla cache
+ */
+export async function clearVCards(): Promise<void> {
+  const db = await getDB()
+  const tx = db.transaction('vcards', 'readwrite')
+  await tx.store.clear()
   await tx.done
 }
