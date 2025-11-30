@@ -36,9 +36,9 @@ function extractTimestamp(msg: MAMResult): Date {
 
 /**
  * Converte un MAMResult in Message
- * Nota: per self-chat la direzione viene determinata dopo, basandosi sull'indice nell'array ordinato
+ * Nota: per self-chat la direzione viene determinata dopo dalla funzione applySelfChatLogic
  */
-function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: string, isSelfChat: boolean = false): Message {
+function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: string): Message {
   const myBareJid = normalizeJid(myJid)
   const from = msg.item.message?.from || ''
   const fromMe = from.startsWith(myBareJid)
@@ -48,16 +48,19 @@ function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: stri
     conversationJid: normalizeJid(conversationJid),
     body: msg.item.message?.body || '',
     timestamp: extractTimestamp(msg),
-    // In self-chat, la direzione viene determinata dopo basandosi sull'ordine
-    // (primo messaggio = sent, secondo = received, etc.)
-    from: isSelfChat ? 'me' : (fromMe ? 'me' : 'them'),
+    // La direzione base (sovrascritta da applySelfChatLogic per self-chat)
+    from: fromMe ? 'me' : 'them',
     status: 'sent', // Messaggi MAM sono già inviati
   }
 }
 
 /**
  * Applica la logica di alternanza per messaggi self-chat
- * In una self-chat, i messaggi alternano: pari = sent ('me'), dispari = received ('them')
+ * In self-chat ogni messaggio appare DUE volte nell'archivio MAM:
+ * - Prima occorrenza = messaggio inviato ('me')
+ * - Seconda occorrenza = messaggio ricevuto ('them')
+ * 
+ * Identifica i duplicati basandosi su body + timestamp simile
  * DEVE essere applicata sull'array completo e ordinato, non su singoli batch
  */
 export function applySelfChatLogic(messages: Message[], isSelfChat: boolean): Message[] {
@@ -65,10 +68,23 @@ export function applySelfChatLogic(messages: Message[], isSelfChat: boolean): Me
     return messages
   }
 
-  return messages.map((msg, index) => ({
-    ...msg,
-    from: index % 2 === 0 ? 'me' : 'them',
-  }))
+  // Mappa per tracciare messaggi già visti: chiave = body+timestamp (arrotondato al secondo)
+  const seenMessages = new Map<string, number>()
+  
+  return messages.map((msg) => {
+    // Crea chiave univoca basata su body + timestamp (arrotondato al secondo)
+    const timestampKey = Math.floor(msg.timestamp.getTime() / 1000)
+    const key = `${msg.body}:${timestampKey}`
+    
+    const occurrenceCount = seenMessages.get(key) || 0
+    seenMessages.set(key, occurrenceCount + 1)
+    
+    // Prima occorrenza = sent ('me'), seconda occorrenza = received ('them')
+    return {
+      ...msg,
+      from: occurrenceCount === 0 ? 'me' : 'them',
+    }
+  })
 }
 
 /**
@@ -132,12 +148,9 @@ export async function loadMessagesForContact(
 
     // Converti TUTTI i messaggi MAMResult in Message (inclusi ping, token, visualizzazioni, ecc.)
     const myJid = client.jid || ''
-    const myBareJid = normalizeJid(myJid)
-    const normalizedContactJid = normalizeJid(contactJid)
-    const isSelfChat = myBareJid === normalizedContactJid
 
     const allMessages = result.results.map((msg) =>
-      mamResultToMessage(msg, contactJid, myJid, false)
+      mamResultToMessage(msg, contactJid, myJid)
     )
 
     // Salva TUTTI i messaggi nel database (dati raw, senza alternanza self-chat)
@@ -199,8 +212,6 @@ export async function downloadAllMessagesFromServer(
   let hasMore = true
   let afterToken: string | undefined
   const myJid = client.jid || ''
-  const myBareJid = normalizeJid(myJid)
-  const isSelfChat = myBareJid === normalizedJid
 
   while (hasMore) {
     try {
@@ -220,7 +231,7 @@ export async function downloadAllMessagesFromServer(
       // Converti TUTTI i messaggi in Message (inclusi ping, token, visualizzazioni, ecc.)
       // NON filtrare qui - salviamo tutto nel database
       const messages = result.results.map((msg) =>
-        mamResultToMessage(msg, contactJid, myJid, isSelfChat)
+        mamResultToMessage(msg, contactJid, myJid)
       )
       
       // Aggiungi alla Map per de-duplicazione automatica per messageId

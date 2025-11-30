@@ -1,14 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { Agent } from 'stanza'
 import {
   loadMessagesForContact,
   sendMessage as sendMessageService,
   getLocalMessages,
   reloadAllMessagesFromServer,
+  applySelfChatLogic,
   type Message,
 } from '../services/messages'
 import { mergeMessages } from '../utils/message'
 import { PAGINATION } from '../config/constants'
+import { normalizeJid } from '../utils/jid'
 
 interface UseMessagesOptions {
   jid: string
@@ -56,7 +58,7 @@ export function useMessages({
   isConnected,
   onNewMessage,
 }: UseMessagesOptions): UseMessagesReturn {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messagesRaw, setMessagesRaw] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
@@ -64,6 +66,17 @@ export function useMessages({
   const [firstToken, setFirstToken] = useState<string | undefined>(undefined)
   
   const isMountedRef = useRef(true)
+
+  // Applica logica self-chat ai messaggi per visualizzazione corretta
+  const messages = useMemo(() => {
+    if (!client?.jid || !jid) return messagesRaw
+    
+    const myBareJid = normalizeJid(client.jid)
+    const contactBareJid = normalizeJid(jid)
+    const isSelfChat = myBareJid === contactBareJid
+    
+    return applySelfChatLogic(messagesRaw, isSelfChat)
+  }, [messagesRaw, jid, client?.jid])
 
   // Cleanup al unmount
   useEffect(() => {
@@ -76,7 +89,7 @@ export function useMessages({
   // Helper: Update messages in modo safe
   const safeSetMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
     if (isMountedRef.current) {
-      setMessages(updater)
+      setMessagesRaw(updater)
     }
   }, [])
 
@@ -174,7 +187,7 @@ export function useMessages({
         // Filtra solo messaggi con body per la visualizzazione nella UI
         // (i messaggi vuoti rimangono salvati nel DB per altre funzionalità)
         const messagesToShow = serverMessages.filter(msg => msg.body && msg.body.trim().length > 0)
-        setMessages(messagesToShow)
+        setMessagesRaw(messagesToShow)
         setHasMoreMessages(false)
         setFirstToken(undefined)
       }
