@@ -1,5 +1,5 @@
 import type { Agent } from 'stanza'
-import type { MAMResult } from 'stanza/protocol'
+import type { MAMResult, ReceivedMessage } from 'stanza/protocol'
 import {
   saveMessages,
   addMessage,
@@ -60,17 +60,22 @@ function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: stri
 
 /**
  * Carica messaggi per un contatto specifico dal server (MAM)
- * Con supporto per paginazione
+ * Con supporto per paginazione usando RSM tokens
  */
 export async function loadMessagesForContact(
   client: Agent,
   contactJid: string,
   options?: {
     maxResults?: number
-    afterToken?: string
-    beforeToken?: string
+    afterToken?: string  // Token per caricare messaggi DOPO questo punto (più recenti)
+    beforeToken?: string // Token per caricare messaggi PRIMA di questo punto (più vecchi)
   }
-): Promise<{ messages: Message[]; nextToken?: string; complete: boolean }> {
+): Promise<{ 
+  messages: Message[]
+  firstToken?: string  // Token del primo messaggio (per paginare indietro)
+  lastToken?: string   // Token dell'ultimo messaggio (per paginare avanti)
+  complete: boolean 
+}> {
   const { maxResults = 50, afterToken, beforeToken } = options || {}
 
   try {
@@ -87,7 +92,8 @@ export async function loadMessagesForContact(
     if (!result.results || result.results.length === 0) {
       return {
         messages: [],
-        nextToken: result.paging?.last,
+        firstToken: result.paging?.first,
+        lastToken: result.paging?.last,
         complete: result.complete ?? true,
       }
     }
@@ -103,7 +109,8 @@ export async function loadMessagesForContact(
 
     return {
       messages,
-      nextToken: result.paging?.last,
+      firstToken: result.paging?.first,  // Token per paginare verso messaggi più vecchi
+      lastToken: result.paging?.last,    // Token per paginare verso messaggi più recenti
       complete: result.complete ?? true,
     }
   } catch (error) {
@@ -122,18 +129,18 @@ export async function loadAllMessagesForContact(
 ): Promise<Message[]> {
   const allMessages: Message[] = []
   let hasMore = true
-  let lastToken: string | undefined
+  let afterToken: string | undefined
 
   while (hasMore) {
     const result = await loadMessagesForContact(client, contactJid, {
       maxResults: 100,
-      afterToken: lastToken,
+      afterToken,
     })
 
     allMessages.push(...result.messages)
 
-    hasMore = !result.complete && !!result.nextToken
-    lastToken = result.nextToken
+    hasMore = !result.complete && !!result.lastToken
+    afterToken = result.lastToken
   }
 
   return allMessages
@@ -207,19 +214,40 @@ export async function retryMessage(
     return { success: false, error: 'Il messaggio non è in stato failed' }
   }
 
-  // Aggiorna lo status a pending
+  // Aggiorna lo status a pending prima dell'invio
   await updateMessageStatus(message.messageId, 'pending')
 
-  // Riprova l'invio
-  const result = await sendMessage(client, message.conversationJid, message.body)
+  try {
+    // Invia il messaggio
+    const sentMessage = await client.sendMessage({
+      to: message.conversationJid,
+      body: message.body,
+      type: 'chat',
+    })
 
-  // Se il nuovo invio ha successo, rimuovi il vecchio messaggio e usa il nuovo
-  if (result.success && result.tempId !== message.messageId) {
-    // Il sendMessage ha creato un nuovo messaggio, eliminiamo quello vecchio
-    // (in realtà manteniamoli entrambi per ora, il nuovo avrà successo)
+    // Se l'invio ha successo, aggiorna il messaggio esistente invece di crearne uno nuovo
+    const serverId = typeof sentMessage === 'string' ? sentMessage : message.messageId
+    
+    if (serverId !== message.messageId) {
+      // Il server ha dato un nuovo ID, aggiorna
+      await updateMessageId(message.messageId, serverId)
+    } else {
+      // Aggiorna solo lo status
+      await updateMessageStatus(message.messageId, 'sent')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Errore nel retry del messaggio:', error)
+    
+    // Ripristina status a 'failed'
+    await updateMessageStatus(message.messageId, 'failed')
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Errore sconosciuto',
+    }
   }
-
-  return { success: result.success, error: result.error }
 }
 
 /**
@@ -239,7 +267,7 @@ export async function getLocalMessages(
  * Gestisce un messaggio ricevuto in real-time
  */
 export async function handleIncomingMessage(
-  message: any,
+  message: ReceivedMessage,
   myJid: string,
   contactJid: string
 ): Promise<void> {

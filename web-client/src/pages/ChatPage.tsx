@@ -19,12 +19,22 @@ export function ChatPage() {
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [firstToken, setFirstToken] = useState<string | undefined>(undefined) // Token per caricare messaggi più vecchi
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const isAtBottomRef = useRef(true)
   const lastScrollHeightRef = useRef(0)
+  const isMountedRef = useRef(true) // Previene setState dopo unmount
+
+  // Cleanup al unmount
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   // Carica messaggi iniziali
   useEffect(() => {
@@ -44,6 +54,8 @@ export function ChatPage() {
     if (!jid) return
 
     const unsubscribe = subscribeToMessages(async (message) => {
+      if (!isMountedRef.current) return
+
       // Controlla se il messaggio è per questa conversazione
       const myBareJid = client?.jid?.split('/')[0].toLowerCase()
       const from = message.from?.split('/')[0].toLowerCase() || ''
@@ -51,12 +63,14 @@ export function ChatPage() {
       const contactJid = from === myBareJid ? to : from
 
       if (contactJid === jid.toLowerCase()) {
-        // Ricarica messaggi locali per mostrare il nuovo messaggio
+        // Ricarica messaggi locali e merge con esistenti
         const updatedMessages = await getLocalMessages(jid)
-        setMessages(updatedMessages)
-        
-        // Marca come letta
-        markConversationAsRead(jid)
+        if (isMountedRef.current) {
+          safeSetMessages(prev => mergeMessages(prev, updatedMessages))
+          
+          // Marca come letta
+          markConversationAsRead(jid)
+        }
       }
     })
 
@@ -84,8 +98,46 @@ export function ChatPage() {
     return () => textarea.removeEventListener('input', adjustHeight)
   }, [])
 
+  // Helper: De-duplica e merge messaggi
+  const mergeMessages = (existing: Message[], newMessages: Message[]): Message[] => {
+    const messageMap = new Map<string, Message>()
+    
+    // Aggiungi messaggi esistenti
+    existing.forEach(msg => messageMap.set(msg.messageId, msg))
+    
+    // Merge/sovrascrivi con nuovi messaggi (più recenti hanno priorità)
+    newMessages.forEach(msg => {
+      const existingMsg = messageMap.get(msg.messageId)
+      
+      // Se esiste già, mantieni lo status più aggiornato
+      if (existingMsg) {
+        // Se il nuovo messaggio ha status 'sent' e quello esistente era 'pending', aggiorna
+        if (msg.status === 'sent' && existingMsg.status === 'pending') {
+          messageMap.set(msg.messageId, msg)
+        }
+        // Altrimenti mantieni quello esistente (evita downgrade di status)
+      } else {
+        messageMap.set(msg.messageId, msg)
+      }
+    })
+    
+    // Converti in array e ordina per timestamp
+    return Array.from(messageMap.values()).sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+    )
+  }
+
+  // Helper: Update messages in modo safe
+  const safeSetMessages = (updater: (prev: Message[]) => Message[]) => {
+    if (isMountedRef.current) {
+      setMessages(updater)
+    }
+  }
+
   const loadInitialMessages = async () => {
     if (!client) return
+
+    if (!isMountedRef.current) return // Check prima di iniziare
 
     setIsLoading(true)
     setError(null)
@@ -93,45 +145,61 @@ export function ChatPage() {
     try {
       // Prima carica dalla cache locale (veloce)
       const localMessages = await getLocalMessages(jid, { limit: 50 })
-      if (localMessages.length > 0) {
-        setMessages(localMessages)
+      if (localMessages.length > 0 && isMountedRef.current) {
+        safeSetMessages(() => localMessages)
         setIsLoading(false)
       }
 
       // Poi carica dal server in background
       const result = await loadMessagesForContact(client, jid, { maxResults: 50 })
-      setMessages(result.messages)
+      
+      if (!isMountedRef.current) return // Check prima di setState
+      
+      // Merge con messaggi esistenti per evitare sostituzione brusca
+      safeSetMessages(prev => mergeMessages(prev, result.messages))
       setHasMoreMessages(!result.complete)
+      setFirstToken(result.firstToken) // Salva token per paginazione
     } catch (err) {
       console.error('Errore nel caricamento messaggi:', err)
-      setError('Impossibile caricare i messaggi')
+      if (isMountedRef.current) {
+        setError('Impossibile caricare i messaggi')
+      }
     } finally {
-      setIsLoading(false)
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }
 
   const loadMoreMessages = async () => {
-    if (!client || isLoadingMore || !hasMoreMessages || messages.length === 0) return
+    if (!client || isLoadingMore || !hasMoreMessages || !firstToken) return
+    if (!isMountedRef.current) return
 
     setIsLoadingMore(true)
-    const oldestMessage = messages[0]
 
     try {
+      // Usa il token RSM corretto per caricare messaggi PRIMA del primo attuale
       const result = await loadMessagesForContact(client, jid, {
         maxResults: 50,
-        beforeToken: oldestMessage.messageId,
+        beforeToken: firstToken, // Usa il token salvato, non messageId!
       })
 
+      if (!isMountedRef.current) return
+
       if (result.messages.length > 0) {
-        setMessages((prev) => [...result.messages, ...prev])
+        // Merge invece di semplice concatenazione per evitare duplicati
+        safeSetMessages(prev => mergeMessages(result.messages, prev))
         setHasMoreMessages(!result.complete)
+        setFirstToken(result.firstToken) // Aggiorna token per il prossimo caricamento
       } else {
         setHasMoreMessages(false)
       }
     } catch (err) {
       console.error('Errore nel caricamento messaggi precedenti:', err)
     } finally {
-      setIsLoadingMore(false)
+      if (isMountedRef.current) {
+        setIsLoadingMore(false)
+      }
     }
   }
 
@@ -186,10 +254,14 @@ export function ChatPage() {
     try {
       const result = await sendMessage(client, jid, messageText)
       
+      if (!isMountedRef.current) return
+
       if (result.success) {
-        // Ricarica messaggi locali per mostrare il nuovo messaggio
+        // Ricarica messaggi locali e merge
         const updatedMessages = await getLocalMessages(jid)
-        setMessages(updatedMessages)
+        if (isMountedRef.current) {
+          safeSetMessages(prev => mergeMessages(prev, updatedMessages))
+        }
       } else {
         setError(result.error || 'Invio fallito')
         // Ripristina il messaggio in caso di errore
@@ -197,11 +269,15 @@ export function ChatPage() {
       }
     } catch (err) {
       console.error('Errore nell\'invio:', err)
-      setError('Errore nell\'invio del messaggio')
-      // Ripristina il messaggio in caso di errore
-      setInputValue(messageText)
+      if (isMountedRef.current) {
+        setError('Errore nell\'invio del messaggio')
+        // Ripristina il messaggio in caso di errore
+        setInputValue(messageText)
+      }
     } finally {
-      setIsSending(false)
+      if (isMountedRef.current) {
+        setIsSending(false)
+      }
     }
   }
 

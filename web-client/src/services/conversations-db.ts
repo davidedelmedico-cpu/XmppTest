@@ -39,6 +39,7 @@ interface ConversationsDB extends DBSchema {
       'by-conversationJid': string
       'by-timestamp': Date
       'by-conversation-timestamp': [string, Date] // Compound index per query efficienti
+      'by-tempId': string // Index per lookup veloce di messaggi temporanei
     }
   }
   metadata: {
@@ -80,6 +81,7 @@ export async function getDB(): Promise<IDBPDatabase<ConversationsDB>> {
         messagesStore.createIndex('by-conversationJid', 'conversationJid')
         messagesStore.createIndex('by-timestamp', 'timestamp')
         messagesStore.createIndex('by-conversation-timestamp', ['conversationJid', 'timestamp'])
+        messagesStore.createIndex('by-tempId', 'tempId', { unique: false })
       }
     },
   })
@@ -311,9 +313,9 @@ export async function updateMessageId(
   const db = await getDB()
   const tx = db.transaction('messages', 'readwrite')
 
-  // Trova il messaggio con tempId
-  const allMessages = await tx.store.getAll()
-  const message = allMessages.find((m) => m.tempId === tempId || m.messageId === tempId)
+  // Usa index per trovare il messaggio invece di getAll()
+  const index = tx.store.index('by-tempId')
+  const message = await index.get(tempId)
 
   if (message) {
     // Rimuovi il vecchio record
@@ -337,10 +339,11 @@ export async function updateMessageId(
 export async function getMessageByTempId(tempId: string): Promise<Message | null> {
   const db = await getDB()
   const tx = db.transaction('messages', 'readonly')
-  const allMessages = await tx.store.getAll()
+  const index = tx.store.index('by-tempId')
+  const message = await index.get(tempId)
   await tx.done
 
-  return allMessages.find((m) => m.tempId === tempId) || null
+  return message || null
 }
 
 /**
