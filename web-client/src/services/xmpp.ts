@@ -147,7 +147,7 @@ type RegistrationPayload = {
   password: string
 }
 
-type GenericHandler = (...args: any[]) => void
+type GenericHandler = (...args: unknown[]) => void
 
 const addCustomListener = (client: Agent, event: string, handler: GenericHandler, once = false) => {
   const emitter = client as unknown as {
@@ -265,22 +265,23 @@ const enableInBandRegistration = (client: Agent, payload: RegistrationPayload) =
       // the SASL authentication flow automatically after registration.
       emitCustomEvent(client, 'register:completed')
       done()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration IQ error:', error)
       
       // Handle specific error conditions
-      if (error?.type === 'error') {
-        const condition = error?.error?.condition || error?.condition
+      const err = error as { type?: string; error?: { condition?: string; text?: string }; condition?: string; text?: string; message?: string }
+      if (err?.type === 'error') {
+        const condition = err?.error?.condition || err?.condition
         if (condition === 'conflict') {
           emitCustomEvent(client, 'register:error', new Error('Username già esistente'))
         } else if (condition === 'not-allowed') {
           emitCustomEvent(client, 'register:error', new Error('Il server non permette la registrazione in-band. La funzionalità è disabilitata.'))
         } else {
-          const errorMsg = error?.error?.text || error?.text || error?.message || 'Errore durante la registrazione'
+          const errorMsg = err?.error?.text || err?.text || err?.message || 'Errore durante la registrazione'
           emitCustomEvent(client, 'register:error', new Error(errorMsg))
         }
       } else {
-        emitCustomEvent(client, 'register:error', error)
+        emitCustomEvent(client, 'register:error', error instanceof Error ? error : new Error(String(error)))
       }
       done()
     }
@@ -314,17 +315,18 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       fail('Autenticazione rifiutata dal server XMPP.', 'Controlla JID/password o se il server richiede prerequisiti.')
     }
 
-    const handleStreamError = (error: any) => {
+    const handleStreamError = (error: unknown) => {
       clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
       // Check if it's a connection error (before authentication)
-      if (!settled && (error?.condition === 'connection-timeout' || error?.condition === 'host-unknown' || error?.condition === 'remote-connection-failed')) {
+      const err = error as { condition?: string; text?: string }
+      if (!settled && (err?.condition === 'connection-timeout' || err?.condition === 'host-unknown' || err?.condition === 'remote-connection-failed')) {
         handleConnectionError()
-      } else if (!settled && error?.condition === 'policy-violation' && intent === 'register') {
+      } else if (!settled && err?.condition === 'policy-violation' && intent === 'register') {
         // Policy violation after registration attempt usually means registration was rejected
         // The register:error event should have been emitted, but if not, handle it here
-        fail('Registrazione rifiutata dal server.', error?.text || 'Il server ha rifiutato la richiesta di registrazione.')
+        fail('Registrazione rifiutata dal server.', err?.text || 'Il server ha rifiutato la richiesta di registrazione.')
       } else {
-        fail('Il server ha chiuso lo stream.', error?.text || error?.condition)
+        fail('Il server ha chiuso lo stream.', err?.text || err?.condition)
       }
     }
 
@@ -344,10 +346,11 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
       // If it doesn't come, we'll need a new timeout, but for now we got a response
     }
 
-    const handleRegisterError = (error: any) => {
+    const handleRegisterError = (error: unknown) => {
       console.error('Registration error event received:', error)
       clearTimeout(timeoutId) // Cancel timeout immediately - we got a response
-      fail('Registrazione fallita.', error?.message || 'Verifica che il server consenta la registrazione in-band.')
+      const err = error as { message?: string }
+      fail('Registrazione fallita.', err?.message || 'Verifica che il server consenta la registrazione in-band.')
     }
 
     const handleRegisterUnsupported = () => {
@@ -415,9 +418,8 @@ const runFlow = (client: Agent, intent: Intent): Promise<XmppResult> => {
 
     // Timeout to prevent hanging indefinitely
     // This will be cleared as soon as we get ANY response from the server
-    let timeoutId: ReturnType<typeof setTimeout>
     const startTime = Date.now()
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (!settled) {
         const elapsed = Date.now() - startTime
         console.warn(`Connection timeout after ${elapsed}ms. No response from server.`)

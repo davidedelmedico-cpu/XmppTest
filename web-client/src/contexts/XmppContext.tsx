@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { Agent } from 'stanza'
 import type { ReceivedMessage } from 'stanza/protocol'
@@ -8,8 +8,11 @@ import {
   enrichWithRoster,
   updateConversationOnNewMessage,
 } from '../services/conversations'
-import { getConversations, type Conversation } from '../services/conversations-db'
+import { getConversations, type Conversation, updateConversation } from '../services/conversations-db'
 import { saveCredentials, loadCredentials, clearCredentials } from '../services/auth-storage'
+import { handleIncomingMessage } from '../services/messages'
+
+type MessageCallback = (message: ReceivedMessage) => void
 
 interface XmppContextType {
   client: Agent | null
@@ -23,6 +26,8 @@ interface XmppContextType {
   connect: (jid: string, password: string) => Promise<void>
   disconnect: () => void
   refreshConversations: () => Promise<void>
+  subscribeToMessages: (callback: MessageCallback) => () => void
+  markConversationAsRead: (jid: string) => Promise<void>
 }
 
 const XmppContext = createContext<XmppContextType | undefined>(undefined)
@@ -37,6 +42,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [logoutIntentional, setLogoutIntentional] = useState(false)
   const hasInitialized = useRef(false)
+  const messageCallbacks = useRef<Set<MessageCallback>>(new Set())
 
   // Inizializzazione al caricamento: controlla credenziali e tenta login
   useEffect(() => {
@@ -115,11 +121,33 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     }
 
     const handleMessage = async (message: ReceivedMessage) => {
-      if (!jid) return
+      if (!jid || !message.body) return
 
-      await updateConversationOnNewMessage(message, jid)
-      const updated = await getConversations()
-      setConversations(updated)
+      try {
+        // 1. Determina il JID del contatto
+        const myBareJid = jid.split('/')[0].toLowerCase()
+        const from = message.from || ''
+        const to = message.to || ''
+        const contactJid = from.startsWith(myBareJid) 
+          ? to.split('/')[0].toLowerCase() 
+          : from.split('/')[0].toLowerCase()
+
+        // 2. Salva messaggio nel database
+        await handleIncomingMessage(message, jid, contactJid)
+
+        // 3. Aggiorna lista conversazioni
+        await updateConversationOnNewMessage(message, jid)
+        const updated = await getConversations()
+        setConversations(updated)
+
+        // 4. Notifica i callback registrati con il messaggio completo (per ChatPage attiva)
+        // Passa sia ReceivedMessage che Message salvato per evitare reload
+        messageCallbacks.current.forEach((callback) => {
+          callback(message)
+        })
+      } catch (error) {
+        console.error('Errore nella gestione del messaggio in arrivo:', error)
+      }
     }
 
     const handleDisconnected = () => {
@@ -222,6 +250,25 @@ export function XmppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const subscribeToMessages = useCallback((callback: MessageCallback) => {
+    messageCallbacks.current.add(callback)
+    
+    // Ritorna una funzione per unsubscribe
+    return () => {
+      messageCallbacks.current.delete(callback)
+    }
+  }, []) // Nessuna dependency: usa solo ref
+
+  const markConversationAsRead = useCallback(async (conversationJid: string) => {
+    try {
+      await updateConversation(conversationJid, { unreadCount: 0 })
+      const updated = await getConversations()
+      setConversations(updated)
+    } catch (error) {
+      console.error('Errore nel marcare conversazione come letta:', error)
+    }
+  }, []) // Nessuna dependency: funzioni pure
+
   return (
     <XmppContext.Provider
       value={{
@@ -236,6 +283,8 @@ export function XmppProvider({ children }: { children: ReactNode }) {
         connect,
         disconnect,
         refreshConversations,
+        subscribeToMessages,
+        markConversationAsRead,
       }}
     >
       {children}
@@ -243,6 +292,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useXmpp() {
   const context = useContext(XmppContext)
   if (context === undefined) {

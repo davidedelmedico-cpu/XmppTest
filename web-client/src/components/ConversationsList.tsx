@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useXmpp } from '../contexts/XmppContext'
 import './ConversationsList.css'
 
 export function ConversationsList() {
+  const navigate = useNavigate()
   const { conversations, isLoading, error, refreshConversations } = useXmpp()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
@@ -155,6 +157,10 @@ export function ConversationsList() {
     return jid.split('@')[0][0]?.toUpperCase() || '?'
   }
 
+  const handleConversationClick = (jid: string) => {
+    navigate(`/chat/${encodeURIComponent(jid)}`)
+  }
+
   if (error && conversations.length === 0) {
     return (
       <div className="conversations-list">
@@ -224,7 +230,11 @@ export function ConversationsList() {
           </div>
         ) : (
           conversations.map((conv) => (
-            <div key={conv.jid} className="conversation-item">
+            <div 
+              key={conv.jid} 
+              className="conversation-item"
+              onClick={() => handleConversationClick(conv.jid)}
+            >
               <div className="conversation-item__avatar">
                 {getInitials(conv.jid, conv.displayName)}
               </div>

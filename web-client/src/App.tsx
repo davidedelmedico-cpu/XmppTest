@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { XmppProvider, useXmpp } from './contexts/XmppContext'
 import { ConversationsPage } from './pages/ConversationsPage'
+import { ChatPage } from './pages/ChatPage'
 import { LoginPopup } from './components/LoginPopup'
 import './App.css'
 
@@ -16,11 +17,8 @@ function AppRoutes() {
       {/* Route sempre accessibili - no routing condizionale */}
       <Routes>
         <Route path="/conversations" element={<ConversationsPage />} />
-        {/* Route per chat individuali - TODO: creare ChatPage se necessario */}
-        <Route path="/conversations/:jid" element={<ConversationsPage />} />
-        <Route path="/chat/:jid" element={<ConversationsPage />} />
+        <Route path="/chat/:jid" element={<ChatPage />} />
         <Route path="/" element={<Navigate to="/conversations" replace />} />
-        {/* Catch-all temporaneo */}
         <Route path="*" element={<Navigate to="/conversations" replace />} />
       </Routes>
 
