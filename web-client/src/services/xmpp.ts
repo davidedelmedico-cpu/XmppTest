@@ -98,14 +98,14 @@ const discoverWebSocketUrl = async (domain: string): Promise<string> => {
   // Fallback: try common WebSocket patterns according to XMPP conventions
   console.debug('Using fallback WebSocket URL strategies for domain:', domain)
   
-  // Pattern 1: subdomain xmpp with /ws path (common for modern servers)
-  const fallbackUrl1 = `wss://xmpp.${domain}/ws`
+  // Pattern 1: subdomain xmpp with /websocket path (common for conversations.im)
+  const fallbackUrl1 = `wss://xmpp.${domain}:443/websocket`
   
-  // Pattern 2: standard port 5281 with /xmpp-websocket path (RFC 7395)
-  const fallbackUrl2 = `wss://${domain}:5281/xmpp-websocket`
+  // Pattern 2: subdomain xmpp with /ws path (common for some servers)
+  const fallbackUrl2 = `wss://xmpp.${domain}/ws`
   
-  // Pattern 3: same domain with /ws path
-  const fallbackUrl3 = `wss://${domain}/ws`
+  // Pattern 3: standard port 5281 with /xmpp-websocket path (RFC 7395)
+  const fallbackUrl3 = `wss://${domain}:5281/xmpp-websocket`
   
   console.debug('Fallback options:', { fallbackUrl1, fallbackUrl2, fallbackUrl3 })
   
