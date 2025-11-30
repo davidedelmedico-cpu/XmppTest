@@ -35,6 +35,17 @@ function extractMessageBody(msg: MAMResult): string {
  * Estrae il timestamp del messaggio
  */
 function extractTimestamp(msg: MAMResult): Date {
+  // 1. Prova con il delay del wrapper Forward (MAM standard)
+  if (msg.item?.delay?.timestamp) {
+    return msg.item.delay.timestamp
+  }
+
+  // 2. Prova con il delay del messaggio interno (per messaggi offline)
+  if (msg.item?.message?.delay?.timestamp) {
+    return msg.item.message.delay.timestamp
+  }
+
+  // 3. Prova con stamp string (formato alternativo)
   const delay = msg.item.message?.delay
   if (delay && typeof delay === 'object' && 'stamp' in delay) {
     const stamp = (delay as { stamp?: string }).stamp
@@ -42,7 +53,8 @@ function extractTimestamp(msg: MAMResult): Date {
       return new Date(stamp)
     }
   }
-  // Fallback: usa data corrente se non disponibile
+  
+  // 4. Fallback: timestamp attuale (per messaggi senza delay)
   return new Date()
 }
 
@@ -142,16 +154,17 @@ export async function loadConversationsFromServer(
     const from = msg.item.message?.from || ''
     const sender: 'me' | 'them' = from.startsWith(myBareJid) ? 'me' : 'them'
 
+    const messageTimestamp = extractTimestamp(msg)
     conversations.push({
       jid: contactJid,
       lastMessage: {
         body: extractMessageBody(msg),
-        timestamp: extractTimestamp(msg),
+        timestamp: messageTimestamp,
         from: sender,
         messageId: msg.id,
       },
       unreadCount: 0,
-      updatedAt: new Date(),
+      updatedAt: messageTimestamp,
     })
   }
 
@@ -248,30 +261,48 @@ export async function loadAllConversations(client: Agent): Promise<Conversation[
 
 
 /**
- * Arricchisce conversazioni con dati dal roster (nomi contatti)
+ * Arricchisce conversazioni con dati dal roster (nomi contatti) e vCard (avatar e nomi pubblici)
+ * 
+ * @param client - Client XMPP
+ * @param conversations - Lista conversazioni da arricchire
+ * @param forceRefreshVCards - Se true, ricarica i vCard dal server ignorando la cache
  */
 export async function enrichWithRoster(
   client: Agent,
-  conversations: Conversation[]
+  conversations: Conversation[],
+  forceRefreshVCards = false
 ): Promise<Conversation[]> {
   try {
+    // 1. Recupera roster (nomi personalizzati dall'utente)
     const rosterResult = await client.getRoster()
-    // RosterResult ha una proprietà 'roster' che contiene gli items
     const rosterData = rosterResult as unknown as { roster?: { items?: Array<{ jid: string; name?: string }> } }
     const rosterItems = rosterData.roster?.items || []
     const rosterMap = new Map(
       rosterItems.map((item) => [normalizeJid(item.jid), item])
     )
 
+    // 2. Recupera vCard per tutti i contatti (in batch)
+    const { getVCardsForJids, getDisplayName } = await import('./vcard')
+    const jids = conversations.map(conv => conv.jid)
+    const vcardMap = await getVCardsForJids(client, jids, forceRefreshVCards)
+
+    // 3. Arricchisci le conversazioni con roster e vCard
     return conversations.map((conv) => {
       const rosterItem = rosterMap.get(conv.jid)
+      const vcard = vcardMap.get(conv.jid)
+
+      // Determina il nome da visualizzare (priorità: roster > vCard fullName > vCard nickname > JID)
+      const displayName = getDisplayName(conv.jid, rosterItem?.name, vcard)
+
       return {
         ...conv,
-        displayName: rosterItem?.name || conv.displayName,
+        displayName,
+        avatarData: vcard?.photoData,
+        avatarType: vcard?.photoType,
       }
     })
   } catch (error) {
-    console.error('Errore nel recupero roster:', error)
+    console.error('Errore nel recupero roster/vCard:', error)
     return conversations
   }
 }

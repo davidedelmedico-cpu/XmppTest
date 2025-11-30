@@ -218,7 +218,17 @@ export function ConversationsList() {
               aria-label={`Conversazione con ${conv.displayName || conv.jid}. ${conv.unreadCount > 0 ? `${conv.unreadCount} messaggi non letti.` : ''} Ultimo messaggio: ${conv.lastMessage.body}`}
             >
               <div className="conversation-item__avatar">
-                {getInitials(conv.jid, conv.displayName)}
+                {conv.avatarData && conv.avatarType ? (
+                  <img 
+                    src={`data:${conv.avatarType};base64,${conv.avatarData}`}
+                    alt={`Avatar di ${conv.displayName || conv.jid}`}
+                    className="conversation-item__avatar-img"
+                  />
+                ) : (
+                  <span className="conversation-item__avatar-initials">
+                    {getInitials(conv.jid, conv.displayName)}
+                  </span>
+                )}
               </div>
               <div className="conversation-item__content">
                 <div className="conversation-item__header">

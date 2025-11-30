@@ -80,7 +80,19 @@ export function ChatPage() {
     handleTouchEnd,
   } = usePullToRefresh({
     onRefresh: async () => {
+      // Ricarica messaggi dal server
       await reloadAllMessages()
+      
+      // Aggiorna vCard del contatto (forza refresh)
+      if (client && jid) {
+        try {
+          const { getVCard } = await import('../services/vcard')
+          await getVCard(client, jid, true) // forceRefresh = true
+        } catch (error) {
+          console.error('Errore nel refresh vCard durante pull-to-refresh:', error)
+        }
+      }
+      
       setTimeout(() => {
         scrollToBottom('smooth')
       }, 100)
@@ -278,6 +290,19 @@ export function ChatPage() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
+        <div className="chat-page__contact-avatar">
+          {conversation?.avatarData && conversation?.avatarType ? (
+            <img 
+              src={`data:${conversation.avatarType};base64,${conversation.avatarData}`}
+              alt={`Avatar di ${getContactName()}`}
+              className="chat-page__avatar-img"
+            />
+          ) : (
+            <span className="chat-page__avatar-initials">
+              {getContactName().slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </div>
         <div className="chat-page__contact-info">
           <h1 className="chat-page__contact-name">{getContactName()}</h1>
           <p className="chat-page__contact-status" aria-live="polite">Online</p>

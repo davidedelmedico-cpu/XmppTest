@@ -207,7 +207,7 @@ class SyncManager {
             from: lastMessage.from,
             messageId: lastMessage.messageId,
           },
-          updatedAt: new Date(),
+          updatedAt: lastMessage.timestamp,
         })
       }
 
