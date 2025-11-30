@@ -32,14 +32,23 @@ export function ConversationsList() {
   // Pull-to-refresh handler - SENZA dipendenze che cambiano frequentemente
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) {
+      console.log('🔴 Pull-to-refresh: Container NON trovato!')
+      return
+    }
+    
+    console.log('✅ Pull-to-refresh: Registrazione event listeners sul container:', container)
 
     const handleTouchStart = (e: TouchEvent) => {
+      console.log('👆 TouchStart - scrollTop:', container.scrollTop)
       // Solo se siamo in cima alla lista
       if (container.scrollTop === 0) {
         touchStartY.current = e.touches[0].clientY
         isDragging.current = true
         isPulling.current = true
+        console.log('✅ Pull iniziato da Y:', touchStartY.current)
+      } else {
+        console.log('❌ Non in cima, scrollTop:', container.scrollTop)
       }
     }
 
@@ -48,6 +57,7 @@ export function ConversationsList() {
 
       touchCurrentY.current = e.touches[0].clientY
       const distance = touchCurrentY.current - touchStartY.current
+      console.log('👉 TouchMove - distance:', distance, 'scrollTop:', container.scrollTop)
 
       // Solo se trasciniamo verso il basso
       if (distance > 0 && container.scrollTop === 0) {
@@ -55,21 +65,25 @@ export function ConversationsList() {
         const pullDist = Math.min(distance * 0.5, 100) // Riduci sensibilità, max 100px
         currentPullDistance.current = pullDist
         setPullDistance(pullDist)
+        console.log('✅ Pull distance:', pullDist)
       } else if (distance <= 0) {
         // Reset se torniamo indietro
         isDragging.current = false
         isPulling.current = false
         currentPullDistance.current = 0
         setPullDistance(0)
+        console.log('⬆️ Reset - drag verso l\'alto')
       }
     }
 
     const handleTouchEnd = () => {
       const finalDistance = currentPullDistance.current
+      console.log('👋 TouchEnd - finalDistance:', finalDistance)
       
       // Usa i ref per controllare lo stato attuale senza dipendenze
       if (finalDistance > 50 && !isRefreshingRef.current && !isLoadingRef.current) {
         // Trigger refresh se trascinato abbastanza (50px)
+        console.log('🔄 Avvio refresh!')
         setIsRefreshing(true)
         window.dispatchEvent(new CustomEvent('refresh-start'))
         refreshConversationsRef.current()
@@ -80,6 +94,7 @@ export function ConversationsList() {
               setPullDistance(0)
               currentPullDistance.current = 0
               window.dispatchEvent(new CustomEvent('refresh-end'))
+              console.log('✅ Refresh completato!')
             }, 300)
           })
           .catch(() => {
@@ -87,9 +102,11 @@ export function ConversationsList() {
             setPullDistance(0)
             currentPullDistance.current = 0
             window.dispatchEvent(new CustomEvent('refresh-end'))
+            console.log('❌ Refresh fallito!')
           })
       } else {
         // Reset con animazione
+        console.log('↩️ Reset senza refresh (distance:', finalDistance, ')')
         setPullDistance(0)
         currentPullDistance.current = 0
       }
