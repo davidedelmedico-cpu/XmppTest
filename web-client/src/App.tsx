@@ -8,10 +8,6 @@ import './App.css'
 function AppRoutes() {
   const { isConnected, isInitializing, logoutIntentional } = useXmpp()
 
-  // Debug logging
-  console.log('[AppRoutes] State:', { isConnected, isInitializing, logoutIntentional })
-  console.log('[AppRoutes] Should show popup?', (isInitializing || !isConnected) && !logoutIntentional)
-
   return (
     <>
       {/* Route sempre accessibili - no routing condizionale */}
