@@ -192,8 +192,8 @@ async function loadAllMessagesFromServerOnly(
       
       allMessages.push(...messages)
 
-      hasMore = !result.complete && !!result.lastToken
-      afterToken = result.lastToken
+      hasMore = !result.complete && !!result.paging?.last
+      afterToken = result.paging?.last
     } catch (error) {
       console.error('Errore nel caricamento batch messaggi:', error)
       break
