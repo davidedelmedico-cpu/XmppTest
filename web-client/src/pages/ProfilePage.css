@@ -49,8 +49,7 @@
 /* Content scrollabile - prende tutto lo spazio rimanente */
 .profile-page__content {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 0;
   padding: 1.5rem 1rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
 }
