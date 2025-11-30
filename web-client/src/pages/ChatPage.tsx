@@ -56,19 +56,12 @@ export function ChatPage() {
       const contactJid = from === myBareJid ? to : from
 
       if (contactJid === jid.toLowerCase()) {
-        // Invece di ricaricare tutto, carica solo i messaggi nuovi
-        // Il messaggio è già stato salvato nel DB dal context
-        const lastMessageTime = messages.length > 0 
-          ? messages[messages.length - 1].timestamp 
-          : new Date(0)
-        
-        // Carica solo messaggi più recenti dell'ultimo che abbiamo
+        // Ricarica tutti i messaggi e lascia che mergeMessages gestisca i duplicati
         const allMessages = await getLocalMessages(jid)
-        const newMessages = allMessages.filter(m => m.timestamp > lastMessageTime)
         
-        if (newMessages.length > 0 && isMountedRef.current) {
-          // Merge solo i nuovi messaggi per evitare duplicati
-          safeSetMessages(prev => mergeMessages(prev, newMessages))
+        if (isMountedRef.current) {
+          // Merge con tutti i messaggi - la funzione mergeMessages usa messageId per de-duplicare
+          safeSetMessages(() => allMessages)
           
           // Marca come letta
           markConversationAsRead(jid)
@@ -77,7 +70,7 @@ export function ChatPage() {
     })
 
     return unsubscribe
-  }, [jid, myJid, subscribeToMessages, markConversationAsRead, messages])
+  }, [jid, myJid, subscribeToMessages, markConversationAsRead])
 
   // Auto-focus su input quando la chat si carica
   useEffect(() => {
@@ -368,16 +361,11 @@ export function ChatPage() {
       if (!isMountedRef.current) return
 
       if (result.success) {
-        // Invece di ricaricare tutto, carica solo il messaggio appena inviato
-        const lastMessageTime = messages.length > 0 
-          ? messages[messages.length - 1].timestamp 
-          : new Date(0)
-        
+        // Ricarica tutti i messaggi dal DB locale
         const allMessages = await getLocalMessages(jid)
-        const newMessages = allMessages.filter(m => m.timestamp >= lastMessageTime)
         
-        if (newMessages.length > 0 && isMountedRef.current) {
-          safeSetMessages(prev => mergeMessages(prev, newMessages))
+        if (isMountedRef.current) {
+          safeSetMessages(() => allMessages)
         }
       } else {
         setError(result.error || 'Invio fallito')
