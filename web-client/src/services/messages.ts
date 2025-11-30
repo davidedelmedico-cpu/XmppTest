@@ -36,6 +36,7 @@ function extractTimestamp(msg: MAMResult): Date {
 
 /**
  * Converte un MAMResult in Message
+ * Nota: per self-chat la direzione viene determinata dopo dalla funzione applySelfChatLogic
  */
 function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: string): Message {
   const myBareJid = normalizeJid(myJid)
@@ -47,9 +48,43 @@ function mamResultToMessage(msg: MAMResult, conversationJid: string, myJid: stri
     conversationJid: normalizeJid(conversationJid),
     body: msg.item.message?.body || '',
     timestamp: extractTimestamp(msg),
+    // La direzione base (sovrascritta da applySelfChatLogic per self-chat)
     from: fromMe ? 'me' : 'them',
     status: 'sent', // Messaggi MAM sono già inviati
   }
+}
+
+/**
+ * Applica la logica di alternanza per messaggi self-chat
+ * In self-chat ogni messaggio appare DUE volte nell'archivio MAM:
+ * - Prima occorrenza = messaggio inviato ('me')
+ * - Seconda occorrenza = messaggio ricevuto ('them')
+ * 
+ * Identifica i duplicati basandosi su body + timestamp simile
+ * DEVE essere applicata sull'array completo e ordinato, non su singoli batch
+ */
+export function applySelfChatLogic(messages: Message[], isSelfChat: boolean): Message[] {
+  if (!isSelfChat || messages.length === 0) {
+    return messages
+  }
+
+  // Mappa per tracciare messaggi già visti: chiave = body+timestamp (arrotondato al secondo)
+  const seenMessages = new Map<string, number>()
+  
+  return messages.map((msg) => {
+    // Crea chiave univoca basata su body + timestamp (arrotondato al secondo)
+    const timestampKey = Math.floor(msg.timestamp.getTime() / 1000)
+    const key = `${msg.body}:${timestampKey}`
+    
+    const occurrenceCount = seenMessages.get(key) || 0
+    seenMessages.set(key, occurrenceCount + 1)
+    
+    // Prima occorrenza = sent ('me'), seconda occorrenza = received ('them')
+    return {
+      ...msg,
+      from: occurrenceCount === 0 ? 'me' : 'them',
+    }
+  })
 }
 
 /**
@@ -113,16 +148,18 @@ export async function loadMessagesForContact(
 
     // Converti TUTTI i messaggi MAMResult in Message (inclusi ping, token, visualizzazioni, ecc.)
     const myJid = client.jid || ''
+
     const allMessages = result.results.map((msg) =>
       mamResultToMessage(msg, contactJid, myJid)
     )
 
-    // Salva TUTTI i messaggi nel database (potrebbero servire per altre funzionalità)
+    // Salva TUTTI i messaggi nel database (dati raw, senza alternanza self-chat)
     await saveMessages(allMessages)
 
     // Filtra solo messaggi di chat validi (con body) per la visualizzazione nella UI
     const validMessages = allMessages.filter(msg => msg.body && msg.body.trim().length > 0)
 
+    // NON applicare alternanza qui - sarà applicata nella UI sull'array completo
     return {
       messages: validMessages,
       firstToken: result.paging?.first,  // Token per paginare verso messaggi più vecchi
@@ -213,6 +250,7 @@ export async function downloadAllMessagesFromServer(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
   )
 
+  // NON applicare alternanza qui - sarà applicata nella UI sull'array completo
   return allMessages
 }
 
