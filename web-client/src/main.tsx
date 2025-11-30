@@ -28,8 +28,12 @@ document.addEventListener('touchmove', (e) => {
     return
   }
   
-  // Se siamo in cima E stiamo trascinando verso il basso, blocca
-  if (isAtTop && touchDelta > 0) {
+  // Controlla se il touch è su un contenitore scrollabile (whitelist)
+  const target = e.target as HTMLElement
+  const scrollableParent = target.closest('.chat-page__messages, .conversations-list__items, .conversations-page__sidebar-nav, .profile-page__content')
+  
+  // Se NON siamo in un contenitore scrollabile E siamo in cima E stiamo trascinando verso il basso, blocca
+  if (!scrollableParent && isAtTop && touchDelta > 0) {
     e.preventDefault()
   }
 }, { passive: false })
