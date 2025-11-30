@@ -341,18 +341,15 @@ export function ChatPage() {
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 5
     
-    // Solo salva la posizione iniziale se siamo in fondo, non attivare ancora il pull
-    if (isAtBottom) {
-      pullStartY.current = e.touches[0].clientY
-      pullStartX.current = e.touches[0].clientX
-      pullCurrentY.current = pullStartY.current
-    } else {
-      pullStartY.current = 0
-    }
+    // Salva sempre la posizione iniziale, ma non bloccare nulla
+    pullStartY.current = e.touches[0].clientY
+    pullStartX.current = e.touches[0].clientX
+    pullCurrentY.current = pullStartY.current
+    isPulling.current = false // Reset pull state
   }
   
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!messagesContainerRef.current || !pullIndicatorRef.current || pullStartY.current === 0) return
+    if (!messagesContainerRef.current || !pullIndicatorRef.current) return
     
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 5
@@ -363,29 +360,24 @@ export function ChatPage() {
     
     // Se movimento orizzontale > verticale, è uno swipe orizzontale, ignora
     if (pullDistanceX > Math.abs(pullDistance)) {
-      pullStartY.current = 0
       isPulling.current = false
       return
     }
     
-    // Se non siamo più in fondo (l'utente ha scrollato), annulla il pull
-    if (!isAtBottom) {
+    // Se tiriamo verso il basso (scroll normale) o non siamo in fondo, NON è un pull-to-refresh
+    if (pullDistance < 0 || !isAtBottom) {
       isPulling.current = false
-      pullStartY.current = 0
-      if (pullIndicatorRef.current) {
+      if (pullIndicatorRef.current.style.opacity !== '0') {
         pullIndicatorRef.current.style.opacity = '0'
         pullIndicatorRef.current.style.transform = 'translateY(0)'
       }
       return
     }
     
-    // Attiva il pull solo dopo un movimento significativo verso l'alto (>30px) E siamo ancora in fondo
-    if (!isPulling.current && pullDistance > 30 && isAtBottom) {
+    // Solo se siamo in fondo E tiriamo verso l'alto > 30px, attiva il pull
+    if (isAtBottom && pullDistance > 30) {
       isPulling.current = true
-    }
-    
-    // Solo se il pull è attivato, siamo in fondo E tiriamo verso l'alto
-    if (isPulling.current && pullDistance > 0) {
+      
       // Previeni lo scroll nativo per mostrare l'indicatore
       e.preventDefault()
       
@@ -395,10 +387,6 @@ export function ChatPage() {
       
       pullIndicatorRef.current.style.opacity = opacity.toString()
       pullIndicatorRef.current.style.transform = `translateY(-${translateY}px)`
-    } else if (pullDistance < 0) {
-      // Se l'utente tira verso il basso (scroll normale), annulla tutto
-      isPulling.current = false
-      pullStartY.current = 0
     }
   }
   
