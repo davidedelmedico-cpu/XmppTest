@@ -60,60 +60,9 @@ function bufferToBase64(buffer: Buffer | Uint8Array | ArrayBuffer | undefined): 
   }
 }
 
-/**
- * Converte stringa base64 a Buffer/Uint8Array
- * Compatibile sia con Node.js che browser
- */
-function base64ToBuffer(base64: string | undefined): Uint8Array | Buffer | undefined {
-  if (!base64) return undefined
-  
-  try {
-    // Valida che la stringa base64 non sia vuota
-    if (base64.trim().length === 0) {
-      console.error('Stringa base64 vuota')
-      return undefined
-    }
-
-    // Se Buffer è disponibile (Node.js o polyfill), usalo
-    if (typeof Buffer !== 'undefined' && Buffer.from) {
-      try {
-        const buffer = Buffer.from(base64, 'base64')
-        // Verifica che il buffer non sia vuoto
-        if (buffer.length === 0) {
-          console.error('Buffer vuoto dopo conversione')
-          return undefined
-        }
-        console.log(`Buffer creato con successo: ${buffer.length} bytes`)
-        return buffer
-      } catch (e) {
-        // Fallback a Uint8Array se Buffer.from fallisce
-        console.debug('Buffer.from fallito, uso Uint8Array:', e)
-      }
-    }
-    
-    // Fallback per browser: usa atob
-    try {
-      const binary = atob(base64)
-      if (binary.length === 0) {
-        console.error('Stringa binaria vuota dopo atob')
-        return undefined
-      }
-      
-      const bytes = new Uint8Array(binary.length)
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i)
-      }
-      console.log(`Uint8Array creato con successo: ${bytes.length} bytes`)
-      return bytes
-    } catch (atobError) {
-      console.error('Errore in atob - stringa base64 non valida:', atobError)
-      return undefined
-    }
-  } catch (error) {
-    console.error('Errore nella conversione base64 a buffer:', error)
-    return undefined
-  }
-}
+// NOTA: La funzione base64ToBuffer è stata rimossa perché non più necessaria.
+// Per SALVARE foto: usiamo direttamente la stringa base64 (causa timeout se convertiamo a Buffer)
+// Per LEGGERE foto: il server restituisce già stringa base64, quindi nessuna conversione necessaria
 
 /**
  * Recupera un vCard dal server XMPP
@@ -281,25 +230,22 @@ export async function publishVCard(
 
     // Aggiungi foto se presente
     if (vcard.photoData && vcard.photoType) {
-      console.log('Tentativo di conversione immagine profilo:', {
+      console.log('Aggiunta immagine profilo al vCard:', {
         photoType: vcard.photoType,
         photoDataLength: vcard.photoData.length,
         photoDataPreview: vcard.photoData.substring(0, 50) + '...'
       })
       
-      const photoBuffer = base64ToBuffer(vcard.photoData)
-      if (!photoBuffer) {
-        console.error('Conversione base64 a buffer fallita per l\'immagine del profilo')
-        throw new Error('Errore nella conversione dell\'immagine del profilo. Prova con un\'altra immagine.')
-      }
-      
-      console.log('Immagine convertita con successo, dimensione:', photoBuffer.length, 'bytes')
-      
+      // FIX: Passa la stringa base64 direttamente, NON convertire a Buffer!
+      // Il server XMPP (e stanza.io) vogliono la stringa base64 come data.
+      // La conversione a Buffer causava timeout del server.
       records.push({
         type: 'photo',
-        data: photoBuffer as Buffer,
+        data: vcard.photoData as any, // ✅ Stringa base64 diretta (cast necessario per tipo stanza)
         mediaType: vcard.photoType
       })
+      
+      console.log('Immagine aggiunta al vCard (base64 string)')
     } else if (vcard.photoData || vcard.photoType) {
       // Solo uno dei due è presente - questo è un errore
       console.warn('Dati immagine incompleti:', { 
