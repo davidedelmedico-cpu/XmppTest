@@ -62,6 +62,7 @@
 - ✅ **Paginazione messaggi** con lazy loading
 - ✅ **Ricerca conversazioni**
 - ✅ **Profilo utente** con modifica vCard
+- ✅ **Push Notifications** (XEP-0357) con Web Push API
 
 ### In Roadmap 🚧
 
@@ -69,7 +70,7 @@
 - 🚧 **Crittografia E2E** (OMEMO - XEP-0384)
 - 🚧 **Condivisione file** (HTTP Upload - XEP-0363)
 - 🚧 **Voice/Video calls** (Jingle - XEP-0166)
-- 🚧 **Push notifications**
+- ✅ **Push notifications** (XEP-0357)
 - 🚧 **PWA** con service worker
 - 🚧 **Dark mode**
 - 🚧 **Emoji picker**

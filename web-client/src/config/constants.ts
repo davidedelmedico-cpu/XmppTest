@@ -48,4 +48,14 @@ export const TEXT_LIMITS = {
 export const STORAGE_KEYS = {
   JID: 'xmpp_jid',
   PASSWORD: 'xmpp_password',
+  PUSH_CONFIG: 'push_config',
+} as const;
+
+// Push Notifications Configuration
+export const PUSH_NOTIFICATIONS = {
+  // Chiave pubblica VAPID (deve essere generata lato server)
+  // Per ora lasciamo vuota - deve essere configurata dall'utente o dal server
+  VAPID_PUBLIC_KEY: '',
+  // JID del servizio push (deve essere configurato in base al server XMPP)
+  DEFAULT_PUSH_JID: '',
 } as const;

@@ -1,0 +1,226 @@
+.push-notifications-container {
+  padding: 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.push-notifications-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2D2926;
+}
+
+.push-notifications-status {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.push-notifications-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.statusItem:last-child {
+  margin-bottom: 0;
+}
+
+.push-notifications-status-label {
+  font-weight: 500;
+  color: #666;
+}
+
+.push-notifications-status-enabled {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.push-notifications-status-disabled {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.push-notifications-status-granted {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.push-notifications-status-denied {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.push-notifications-status-default {
+  color: #666;
+  font-weight: 600;
+}
+
+.push-notifications-message-success {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #6ee7b7;
+}
+
+.push-notifications-message-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #fca5a5;
+}
+
+.push-notifications-form {
+  margin-bottom: 2rem;
+}
+
+.push-notifications-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.push-notifications-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #2D2926;
+}
+
+.push-notifications-input,
+.push-notifications-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.push-notifications-input:focus,
+.push-notifications-textarea:focus {
+  outline: none;
+  border-color: #5682a3;
+  box-shadow: 0 0 0 3px rgba(86, 130, 163, 0.1);
+}
+
+.push-notifications-input:disabled,
+.push-notifications-textarea:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.push-notifications-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.push-notifications-hint {
+  font-size: 0.875rem;
+  color: #666;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+.push-notifications-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.push-notifications-button-primary {
+  background: #5682a3;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.push-notifications-button-primary:hover:not(:disabled) {
+  background: #4a6f8a;
+}
+
+.push-notifications-button-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.push-notifications-button-danger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.push-notifications-button-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.push-notifications-button-danger:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.push-notifications-not-supported,
+.push-notifications-not-connected {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  color: #92400e;
+}
+
+.push-notifications-not-supported p,
+.push-notifications-not-connected p {
+  margin-bottom: 0.5rem;
+}
+
+.push-notifications-not-supported p:last-child,
+.push-notifications-not-connected p:last-child {
+  margin-bottom: 0;
+}
+
+.push-notifications-info {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.push-notifications-info-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #2D2926;
+}
+
+.push-notifications-info-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+.push-notifications-info-list li {
+  margin-bottom: 0.5rem;
+}
+
+.push-notifications-info-list li:last-child {
+  margin-bottom: 0;
+}
