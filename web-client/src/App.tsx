@@ -8,6 +8,7 @@ import { AppInitializerWithCallback } from './components/AppInitializer'
 import { LoginPopup } from './components/LoginPopup'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SplashScreen } from './components/SplashScreen'
+import { PushNotificationStatus } from './components/PushNotificationStatus'
 import './App.css'
 
 // Lazy load delle pagine per code splitting
@@ -93,7 +94,10 @@ function App() {
               <HashRouter>
                 <AppInitializerWithCallback>
                   {({ isInitializing }) => (
-                    <AppRoutes isInitializing={isInitializing} />
+                    <>
+                      <AppRoutes isInitializing={isInitializing} />
+                      <PushNotificationStatus />
+                    </>
                   )}
                 </AppInitializerWithCallback>
               </HashRouter>

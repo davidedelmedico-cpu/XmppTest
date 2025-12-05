@@ -404,6 +404,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
       if (success) {
         setPushEnabled(true)
         console.log('Push Notifications abilitate automaticamente con successo')
+        // Notifica visibile verrà mostrata dal componente PushNotificationStatus
       } else {
         console.debug('Push Notifications non disponibili sul server o errore nell\'abilitazione')
       }
