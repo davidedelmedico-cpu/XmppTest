@@ -151,6 +151,7 @@ web-client/
 ##### **Entrypoint**
 - `main.tsx` - **ENTRYPOINT PRINCIPALE**
   - Inizializzazione React
+  - Inizializzazione Debug Logger (intercetta console.log)
   - Registrazione Service Worker
   - Gestione touch events (pull-to-refresh, pinch-zoom)
   - Gestione orientamento schermo
@@ -182,6 +183,7 @@ Componenti riutilizzabili
 | `PushNotificationStatus.tsx` | Status indicator push notifications |
 | `SplashScreen.tsx` | Schermata di caricamento iniziale |
 | `ErrorBoundary.tsx` | Gestione errori React |
+| `DebugLogPopup.tsx` | Popup per visualizzare console logs intercettati |
 
 ##### **Contexts (`contexts/`)**
 State management globale con React Context
@@ -208,6 +210,7 @@ Business logic e integrazione servizi esterni
 | `SyncService.ts` | Orchestrazione sync globale | sync.ts |
 | `push-notifications.ts` | Push Notifications XEP-0357 | Service Worker, XMPP |
 | `auth-storage.ts` | Storage sicuro credenziali | localStorage |
+| `debug-logger.ts` | Intercettazione e raccolta console logs | Browser Console API |
 
 ##### **Repositories (`repositories/`)**
 Data Access Layer per IndexedDB
@@ -572,6 +575,7 @@ class ConversationRepository {
 - ✅ **Push Notifications** (XEP-0357) con abilitazione automatica
 - ✅ **Typing indicators** (future - base implementata)
 - ✅ **Presence** (online/offline status)
+- ✅ **Debug Logger** (intercetta e visualizza tutti i console.log)
 
 ### 🚧 In Development / Roadmap
 

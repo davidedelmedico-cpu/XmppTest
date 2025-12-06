@@ -78,14 +78,18 @@ Il debug logger viene inizializzato automaticamente all'avvio dell'applicazione.
 2. **Filtrare i Log:**
    - Usa i pulsanti "Tutti", "Log", "Info", "Warn", "Error" per filtrare
 
-3. **Esportare i Log:**
+3. **Copiare i Log negli Appunti:**
+   - Clicca su "Copia" per copiare tutti i log come testo negli appunti
+   - I log verranno copiati in formato testo con timestamp
+
+4. **Esportare i Log:**
    - Clicca su "TXT" per esportare come file di testo
    - Clicca su "JSON" per esportare come JSON (include timestamp e args originali)
 
-4. **Cancellare i Log:**
+5. **Cancellare i Log:**
    - Clicca su "Cancella" per pulire tutti i log (richiede conferma)
 
-5. **Auto-scroll:**
+6. **Auto-scroll:**
    - Attiva/disattiva la checkbox "Auto-scroll" per seguire automaticamente i nuovi log
 
 ## Struttura dei Log

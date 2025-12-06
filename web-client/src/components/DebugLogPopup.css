@@ -176,6 +176,17 @@
   border-color: #adb5bd;
 }
 
+.debug-log-popup__action-btn--primary {
+  color: #667eea;
+  border-color: #667eea;
+  font-weight: 600;
+}
+
+.debug-log-popup__action-btn--primary:hover {
+  background: #667eea;
+  color: #ffffff;
+}
+
 .debug-log-popup__action-btn--danger {
   color: #dc3545;
   border-color: #dc3545;
