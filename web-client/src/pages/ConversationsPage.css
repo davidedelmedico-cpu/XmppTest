@@ -91,6 +91,35 @@
   font-weight: 500;
 }
 
+/* Debug button */
+.conversations-page__debug-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.conversations-page__debug-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
+}
+
+.conversations-page__debug-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.95);
+}
+
 /* Main content */
 .conversations-page__main {
   flex: 1;
