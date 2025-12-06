@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useConnection } from '../contexts/ConnectionContext'
 import { ConversationsList } from '../components/ConversationsList'
 import { NewConversationPopup } from '../components/NewConversationPopup'
+import { DebugLogPopup } from '../components/DebugLogPopup'
 import './ConversationsPage.css'
 
 export function ConversationsPage() {
@@ -10,6 +11,7 @@ export function ConversationsPage() {
   const { isConnected, disconnect, jid, client } = useConnection()
   const [showMenu, setShowMenu] = useState(false)
   const [showNewConversation, setShowNewConversation] = useState(false)
+  const [showDebugLog, setShowDebugLog] = useState(false)
   const [userAvatar, setUserAvatar] = useState<{ data?: string; type?: string } | null>(null)
 
   const handleLogout = () => {
@@ -76,6 +78,16 @@ export function ConversationsPage() {
               <span className="conversations-page__status-text">Non connesso</span>
             </div>
           )}
+          <button 
+            className="conversations-page__debug-btn"
+            onClick={() => setShowDebugLog(true)}
+            aria-label="Apri debug log"
+            title="Debug Console Logs"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -199,6 +211,13 @@ export function ConversationsPage() {
         <NewConversationPopup
           onClose={() => setShowNewConversation(false)}
           onSubmit={handleNewConversation}
+        />
+      )}
+
+      {/* Popup debug log */}
+      {showDebugLog && (
+        <DebugLogPopup
+          onClose={() => setShowDebugLog(false)}
         />
       )}
     </div>

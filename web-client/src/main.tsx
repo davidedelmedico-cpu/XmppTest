@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
+// Inizializza il debug logger per intercettare tutti i console.log
+import { debugLogger } from './services/debug-logger'
+debugLogger.initialize()
+console.log('Debug Logger inizializzato - tutti i log verranno raccolti')
+
 // Blocca il pull-to-refresh nativo del browser su TUTTO il documento
 let lastTouchY = 0
 let isAtTop = true

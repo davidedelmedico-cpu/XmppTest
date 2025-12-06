@@ -91,6 +91,32 @@
   font-weight: 500;
 }
 
+/* Debug button */
+.conversations-page__debug-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.conversations-page__debug-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.conversations-page__debug-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
 /* Main content */
 .conversations-page__main {
   flex: 1;
