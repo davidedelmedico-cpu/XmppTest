@@ -39,6 +39,14 @@ export interface PushSubscription {
 const PUSH_NAMESPACE = 'urn:xmpp:push:0'
 
 /**
+ * JID noti di servizi push per server comuni
+ */
+const KNOWN_PUSH_SERVICES: Record<string, string> = {
+  'conversations.im': 'push.conversations.im',
+  'jabber.de': 'push.jabber.de',
+}
+
+/**
  * Verifica se le Push Notifications sono supportate dal browser
  */
 export function isPushSupported(): boolean {
@@ -203,6 +211,27 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
     const serverDomain = fullJid.split('@')[1] || fullJid
     
     console.log(`🔍 Push Notifications: Cerco servizio push sul server ${serverDomain}...`)
+    
+    // 0. Prima prova con JID noto per il server (se esiste)
+    if (KNOWN_PUSH_SERVICES[serverDomain]) {
+      const knownPushJid = KNOWN_PUSH_SERVICES[serverDomain]
+      console.log(`🔍 Push Notifications: Provo con JID noto: ${knownPushJid}...`)
+      
+      try {
+        const knownDiscoInfo = await client.getDiscoInfo(knownPushJid)
+        
+        console.log(`📋 Push Notifications: Features di ${knownPushJid}:`, knownDiscoInfo.features)
+        
+        if (knownDiscoInfo.features && knownDiscoInfo.features.includes(PUSH_NAMESPACE)) {
+          console.log(`✅ Push Notifications: Servizio push trovato usando JID noto: ${knownPushJid}`)
+          return { jid: knownPushJid }
+        } else {
+          console.log(`ℹ️ Push Notifications: ${knownPushJid} non supporta push`)
+        }
+      } catch (error) {
+        console.debug(`⚠️ Push Notifications: Errore nel disco.info su ${knownPushJid}:`, error)
+      }
+    }
 
     // Verifica che il plugin disco sia disponibile
     if (!client.getDiscoInfo || !client.getDiscoItems) {
@@ -215,7 +244,15 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
       console.log(`🔍 Push Notifications: Verifico se il server supporta XEP-0357 direttamente...`)
       const serverDiscoInfo = await client.getDiscoInfo(serverDomain)
       
-      console.log(`📋 Push Notifications: Features del server:`, serverDiscoInfo.features)
+      console.log(`📋 Push Notifications: Features del server (${serverDiscoInfo.features?.length || 0} features):`)
+      if (serverDiscoInfo.features && serverDiscoInfo.features.length > 0) {
+        serverDiscoInfo.features.forEach((feature: string) => {
+          const isPush = feature === PUSH_NAMESPACE
+          console.log(`   ${isPush ? '✅' : '  '} ${feature}`)
+        })
+      } else {
+        console.log('   (nessuna feature)')
+      }
       
       if (serverDiscoInfo.features && serverDiscoInfo.features.includes(PUSH_NAMESPACE)) {
         console.log('✅ Push Notifications: Server supporta push notifications direttamente:', serverDomain)
@@ -224,7 +261,7 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         console.log('ℹ️ Push Notifications: Server non supporta push direttamente, cerco nei servizi...')
       }
     } catch (error) {
-      console.debug('⚠️ Push Notifications: Errore nel disco.info sul server:', error)
+      console.warn('⚠️ Push Notifications: Errore nel disco.info sul server:', error)
       // Continua con la ricerca nei servizi
     }
 
@@ -240,7 +277,10 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         return null
       }
 
-      console.log(`📋 Push Notifications: Trovati ${serverDiscoItems.items.length} servizi sul server`)
+      console.log(`📋 Push Notifications: Trovati ${serverDiscoItems.items.length} servizi sul server:`)
+      serverDiscoItems.items.forEach((item: any) => {
+        console.log(`   - ${item.jid}${item.node ? ` (node: ${item.node})` : ''}${item.name ? ` - ${item.name}` : ''}`)
+      })
 
       // 3. Per ogni servizio, verifica se supporta push
       for (const item of serverDiscoItems.items) {
@@ -249,8 +289,10 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         }
 
         try {
-          console.log(`🔍 Push Notifications: Verifico servizio ${item.jid}...`)
+          console.log(`🔍 Push Notifications: Verifico servizio ${item.jid}${item.node ? ` (node: ${item.node})` : ''}...`)
           const itemDiscoInfo = await client.getDiscoInfo(item.jid, item.node)
+          
+          console.log(`   Features (${itemDiscoInfo.features?.length || 0}):`, itemDiscoInfo.features)
           
           // Verifica se questo servizio supporta XEP-0357
           if (itemDiscoInfo.features && itemDiscoInfo.features.includes(PUSH_NAMESPACE)) {
@@ -259,10 +301,12 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
               jid: item.jid.toString(), 
               node: item.node 
             }
+          } else {
+            console.log(`   ℹ️ Servizio ${item.jid} non supporta push (namespace cercato: ${PUSH_NAMESPACE})`)
           }
         } catch (error) {
           // Ignora errori per singoli servizi e continua con il prossimo
-          console.debug(`⚠️ Push Notifications: Errore nel disco.info sul servizio ${item.jid}:`, error)
+          console.warn(`⚠️ Push Notifications: Errore nel disco.info sul servizio ${item.jid}:`, error)
           continue
         }
       }
