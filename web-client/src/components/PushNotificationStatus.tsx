@@ -75,6 +75,7 @@ function usePushNotifications() {
 }
 
 export function PushNotificationStatus() {
+  const { client, isConnected } = useConnection()
   const { pushSupported, pushEnabled, pushPermission, enablePushAuto, requestPermission } = usePushNotifications()
   const [showStatus, setShowStatus] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{
@@ -223,19 +224,68 @@ export function PushNotificationStatus() {
         })
         setShowStatus(true)
 
-        // Prova ad abilitare automaticamente
-        const success = await enablePushAuto()
-        if (success) {
-          setStatusMessage({
-            type: 'success',
-            title: 'Push Abilitate',
-            message: 'Le push notifications sono state abilitate con successo!'
-          })
-        } else {
+        // Prova ad abilitare automaticamente e cattura errori dettagliati
+        try {
+          const { enablePushNotificationsAuto, discoverPushService, getPushSubscription } = await import('../services/push-notifications')
+          
+          // Step 1: Verifica connessione XMPP
+          if (!client || !isConnected) {
+            setStatusMessage({
+              type: 'error',
+              title: 'Abilitazione Fallita',
+              message: 'DETTAGLI: Client XMPP non connesso. Effettua il login prima di abilitare le push.'
+            })
+            setShowStatus(true)
+            setIsTesting(false)
+            return
+          }
+          
+          // Step 2: Discovery servizio push
+          const pushService = await discoverPushService(client)
+          if (!pushService) {
+            setStatusMessage({
+              type: 'error',
+              title: 'Abilitazione Fallita',
+              message: 'DETTAGLI: Servizio push non trovato sul server XMPP. Il server conversations.im potrebbe non supportare XEP-0357 o il servizio push.conversations.im non risponde.'
+            })
+            setShowStatus(true)
+            setIsTesting(false)
+            return
+          }
+          
+          // Step 3: Ottieni subscription browser
+          const browserSub = await getPushSubscription()
+          if (!browserSub) {
+            setStatusMessage({
+              type: 'error',
+              title: 'Abilitazione Fallita',
+              message: 'DETTAGLI: Impossibile creare subscription push nel browser. Il browser potrebbe richiedere chiavi VAPID.'
+            })
+            setShowStatus(true)
+            setIsTesting(false)
+            return
+          }
+          
+          // Step 4: Abilita sul server
+          const success = await enablePushNotificationsAuto(client)
+          if (success) {
+            setStatusMessage({
+              type: 'success',
+              title: 'Push Abilitate',
+              message: `Le push notifications sono state abilitate con successo!\n\nServer: ${pushService.jid}`
+            })
+          } else {
+            setStatusMessage({
+              type: 'error',
+              title: 'Abilitazione Fallita',
+              message: `DETTAGLI: Il server ${pushService.jid} ha rifiutato la richiesta di abilitazione push. Possibili cause:\n- Stanza IQ malformata\n- Server non supporta XEP-0357\n- Errore di comunicazione`
+            })
+          }
+        } catch (error) {
           setStatusMessage({
             type: 'error',
             title: 'Abilitazione Fallita',
-            message: 'Impossibile abilitare le push notifications. Il server potrebbe non supportarle.'
+            message: `DETTAGLI ERRORE: ${error instanceof Error ? error.message : JSON.stringify(error)}`
           })
         }
         setShowStatus(true)
@@ -266,7 +316,7 @@ export function PushNotificationStatus() {
           setStatusMessage({
             type: 'error',
             title: 'Abilitazione Fallita',
-            message: 'Impossibile abilitare le push notifications.'
+            message: 'DETTAGLI: Impossibile abilitare le push notifications. Verifica la console per errori.'
           })
         }
         setShowStatus(true)
@@ -285,7 +335,7 @@ export function PushNotificationStatus() {
       setStatusMessage({
         type: 'error',
         title: 'Errore nel Test',
-        message: `Errore durante il test: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`
+        message: `DETTAGLI ERRORE: ${error instanceof Error ? error.message : JSON.stringify(error)}`
       })
       setShowStatus(true)
     } finally {

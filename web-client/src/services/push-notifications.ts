@@ -39,6 +39,14 @@ export interface PushSubscription {
 const PUSH_NAMESPACE = 'urn:xmpp:push:0'
 
 /**
+ * JID noti di servizi push per server comuni
+ */
+const KNOWN_PUSH_SERVICES: Record<string, string> = {
+  'conversations.im': 'push.conversations.im',
+  'jabber.de': 'push.jabber.de',
+}
+
+/**
  * Verifica se le Push Notifications sono supportate dal browser
  */
 export function isPushSupported(): boolean {
@@ -203,6 +211,27 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
     const serverDomain = fullJid.split('@')[1] || fullJid
     
     console.log(`🔍 Push Notifications: Cerco servizio push sul server ${serverDomain}...`)
+    
+    // 0. Prima prova con JID noto per il server (se esiste)
+    if (KNOWN_PUSH_SERVICES[serverDomain]) {
+      const knownPushJid = KNOWN_PUSH_SERVICES[serverDomain]
+      console.log(`🔍 Push Notifications: Provo con JID noto: ${knownPushJid}...`)
+      
+      try {
+        const knownDiscoInfo = await client.getDiscoInfo(knownPushJid)
+        
+        console.log(`📋 Push Notifications: Features di ${knownPushJid}:`, knownDiscoInfo.features)
+        
+        if (knownDiscoInfo.features && knownDiscoInfo.features.includes(PUSH_NAMESPACE)) {
+          console.log(`✅ Push Notifications: Servizio push trovato usando JID noto: ${knownPushJid}`)
+          return { jid: knownPushJid }
+        } else {
+          console.log(`ℹ️ Push Notifications: ${knownPushJid} non supporta push`)
+        }
+      } catch (error) {
+        console.debug(`⚠️ Push Notifications: Errore nel disco.info su ${knownPushJid}:`, error)
+      }
+    }
 
     // Verifica che il plugin disco sia disponibile
     if (!client.getDiscoInfo || !client.getDiscoItems) {
@@ -215,7 +244,15 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
       console.log(`🔍 Push Notifications: Verifico se il server supporta XEP-0357 direttamente...`)
       const serverDiscoInfo = await client.getDiscoInfo(serverDomain)
       
-      console.log(`📋 Push Notifications: Features del server:`, serverDiscoInfo.features)
+      console.log(`📋 Push Notifications: Features del server (${serverDiscoInfo.features?.length || 0} features):`)
+      if (serverDiscoInfo.features && serverDiscoInfo.features.length > 0) {
+        serverDiscoInfo.features.forEach((feature: string) => {
+          const isPush = feature === PUSH_NAMESPACE
+          console.log(`   ${isPush ? '✅' : '  '} ${feature}`)
+        })
+      } else {
+        console.log('   (nessuna feature)')
+      }
       
       if (serverDiscoInfo.features && serverDiscoInfo.features.includes(PUSH_NAMESPACE)) {
         console.log('✅ Push Notifications: Server supporta push notifications direttamente:', serverDomain)
@@ -224,7 +261,7 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         console.log('ℹ️ Push Notifications: Server non supporta push direttamente, cerco nei servizi...')
       }
     } catch (error) {
-      console.debug('⚠️ Push Notifications: Errore nel disco.info sul server:', error)
+      console.warn('⚠️ Push Notifications: Errore nel disco.info sul server:', error)
       // Continua con la ricerca nei servizi
     }
 
@@ -240,7 +277,10 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         return null
       }
 
-      console.log(`📋 Push Notifications: Trovati ${serverDiscoItems.items.length} servizi sul server`)
+      console.log(`📋 Push Notifications: Trovati ${serverDiscoItems.items.length} servizi sul server:`)
+      serverDiscoItems.items.forEach((item: any) => {
+        console.log(`   - ${item.jid}${item.node ? ` (node: ${item.node})` : ''}${item.name ? ` - ${item.name}` : ''}`)
+      })
 
       // 3. Per ogni servizio, verifica se supporta push
       for (const item of serverDiscoItems.items) {
@@ -249,8 +289,10 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
         }
 
         try {
-          console.log(`🔍 Push Notifications: Verifico servizio ${item.jid}...`)
+          console.log(`🔍 Push Notifications: Verifico servizio ${item.jid}${item.node ? ` (node: ${item.node})` : ''}...`)
           const itemDiscoInfo = await client.getDiscoInfo(item.jid, item.node)
+          
+          console.log(`   Features (${itemDiscoInfo.features?.length || 0}):`, itemDiscoInfo.features)
           
           // Verifica se questo servizio supporta XEP-0357
           if (itemDiscoInfo.features && itemDiscoInfo.features.includes(PUSH_NAMESPACE)) {
@@ -259,18 +301,22 @@ export async function discoverPushService(client: Agent): Promise<{ jid: string;
               jid: item.jid.toString(), 
               node: item.node 
             }
+          } else {
+            console.log(`   ℹ️ Servizio ${item.jid} non supporta push (namespace cercato: ${PUSH_NAMESPACE})`)
           }
         } catch (error) {
           // Ignora errori per singoli servizi e continua con il prossimo
-          console.debug(`⚠️ Push Notifications: Errore nel disco.info sul servizio ${item.jid}:`, error)
+          console.warn(`⚠️ Push Notifications: Errore nel disco.info sul servizio ${item.jid}:`, error)
           continue
         }
       }
 
       console.warn('❌ Push Notifications: Nessun servizio push trovato tramite Service Discovery')
-      console.warn('❌ Push Notifications: Il server non supporta XEP-0357 (Push Notifications)')
-      console.warn('💡 Push Notifications: Per abilitare le push, serve un server XMPP con supporto XEP-0357')
-      return null
+      console.log('💡 Push Notifications: Tento comunque con il server principale come fallback...')
+      
+      // Fallback: alcuni server hanno push integrato direttamente
+      // Tentiamo con il dominio principale
+      return { jid: serverDomain }
     } catch (error) {
       console.warn('⚠️ Push Notifications: Errore nel disco.items sul server:', error)
       return null
@@ -315,9 +361,10 @@ export async function enablePushNotificationsAuto(client: Agent): Promise<boolea
 
     console.log(`✅ Push Notifications: Servizio push trovato: ${pushService.jid}`)
 
-    // 2. Ottieni subscription push (senza chiave VAPID se possibile)
+    // 2. Ottieni subscription push (con chiave VAPID)
     console.log('🔑 Push Notifications: Ottengo subscription push dal browser...')
-    const subscription = await getPushSubscription()
+    const { PUSH_NOTIFICATIONS } = await import('../config/constants')
+    const subscription = await getPushSubscription(PUSH_NOTIFICATIONS.VAPID_PUBLIC_KEY || undefined)
     if (!subscription) {
       console.warn('⚠️ Push Notifications: Impossibile ottenere subscription push dal browser')
       console.warn('💡 Push Notifications: Verifica che il browser supporti Web Push API')
@@ -353,75 +400,92 @@ export async function enablePushNotifications(
   node?: string
 ): Promise<boolean> {
   try {
-    // Verifica che il server supporti XEP-0357
-    // Nota: Stanza.js potrebbe non avere un metodo diretto per discoverFeatures
-    // Tentiamo comunque di abilitare le push - il server risponderà con errore se non supportato
-    // In alternativa, possiamo fare una disco.info manuale se necessario
-
-    // Costruisci la stanza IQ per abilitare push usando XML grezzo
-    // Stanza.js non ha supporto nativo per XEP-0357, quindi inviamo XML direttamente
+    // Costruisci la stanza IQ per abilitare push secondo XEP-0357
     const iqId = `enable-push-${Date.now()}`
     
-    // Costruisci l'XML della stanza secondo XEP-0357
-    const enableXml = `<iq type="set" id="${iqId}">
-  <enable xmlns="${PUSH_NAMESPACE}" jid="${pushJid}"${node ? ` node="${node}"` : ''}>
-    <x xmlns="jabber:x:data" type="submit">
-      <field var="FORM_TYPE">
-        <value>http://jabber.org/protocol/pubsub#publish-options</value>
-      </field>
-      <field var="pubsub#endpoint">
-        <value>${pushSubscription.endpoint}</value>
-      </field>
-      <field var="pubsub#max_items">
-        <value>1</value>
-      </field>
-    </x>
-  </enable>
-</iq>`
-
-    // Invia la stanza XML grezzo e aspetta la risposta
-    return new Promise<boolean>((resolve) => {
-      // Handler per la risposta IQ
-      const handleIQ = (iq: { id?: string; type?: string }) => {
-        if (iq.id === iqId) {
-          // Rimuovi il listener dopo aver ricevuto la risposta
-          const emitter = client as unknown as { 
-            removeListener: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
+    console.log('📤 Push Notifications: Invio stanza di abilitazione al server XMPP...')
+    
+    // Costruisci la stanza IQ nel formato JSON che Stanza.js può gestire
+    // Usiamo il plugin custom che abbiamo registrato per XEP-0357
+    const enableStanza = {
+      id: iqId,
+      type: 'set',
+      // Elemento <enable> secondo XEP-0357 (registrato nel plugin)
+      enablePush: {
+        jid: pushJid,
+        ...(node && { node }),
+      },
+      // Form data secondo XEP-0004 (Data Forms) - già supportato da Stanza.js
+      form: {
+        type: 'submit',
+        fields: [
+          {
+            name: 'FORM_TYPE',
+            value: 'http://jabber.org/protocol/pubsub#publish-options'
+          },
+          {
+            name: 'pubsub#endpoint',
+            value: pushSubscription.endpoint
+          },
+          {
+            name: 'pubsub#max_items',
+            value: '1'
           }
-          emitter.removeListener('iq', handleIQ)
+        ]
+      }
+    }
 
+    // Crea una Promise per aspettare la risposta IQ
+    return new Promise<boolean>((resolve) => {
+      let timeoutHandle: NodeJS.Timeout | number
+
+      // Handler per intercettare la risposta IQ
+      const handleIQ = (iq: any) => {
+        if (iq.id === iqId) {
+          clearTimeout(timeoutHandle)
+          client.off('iq', handleIQ)
+          
           if (iq.type === 'result') {
-            console.log('Push Notifications abilitate con successo')
+            console.log('✅ Push Notifications: Abilitate con successo!')
             resolve(true)
+          } else if (iq.type === 'error') {
+            console.error('❌ Push Notifications: Errore dal server:', iq.error)
+            
+            // Verifica il tipo di errore
+            if (iq.error?.condition === 'feature-not-implemented' || 
+                iq.error?.condition === 'service-unavailable') {
+              console.warn('⚠️ Push Notifications: Il server non supporta XEP-0357')
+              console.warn('💡 Push Notifications: Per abilitare le push, serve un server XMPP con supporto XEP-0357')
+            }
+            
+            resolve(false)
           } else {
-            console.error('Errore nell\'abilitazione push notifications:', iq)
+            console.error('⚠️ Push Notifications: Risposta non valida dal server:', iq)
             resolve(false)
           }
         }
       }
 
-      // Registra il listener per la risposta IQ
-      const emitter = client as unknown as { 
-        on: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
-      }
-      emitter.on('iq', handleIQ)
+      // Registra listener per la risposta
+      client.on('iq', handleIQ)
 
-      // Timeout per evitare che la promise rimanga pending per sempre
-      setTimeout(() => {
-        const emitterTimeout = client as unknown as { 
-          removeListener: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
-        }
-        emitterTimeout.removeListener('iq', handleIQ)
-        console.error('Timeout nell\'abilitazione push notifications')
+      // Timeout per evitare che la Promise rimanga pending
+      timeoutHandle = setTimeout(() => {
+        client.off('iq', handleIQ)
+        console.error('⏱️ Push Notifications: Timeout nell\'attesa della risposta dal server')
         resolve(false)
       }, 10000)
 
-      // Invia la stanza XML
-      const sender = client as unknown as { send: (name: string, data: string) => void }
-      sender.send('iq', enableXml)
+      // Invia la stanza usando il metodo send()
+      client.send('iq', enableStanza as any).catch((error) => {
+        clearTimeout(timeoutHandle)
+        client.off('iq', handleIQ)
+        console.error('❌ Push Notifications: Errore nell\'invio della stanza:', error)
+        resolve(false)
+      })
     })
   } catch (error) {
-    console.error('Errore nell\'abilitazione push notifications:', error)
+    console.error('❌ Push Notifications: Errore nell\'abilitazione push notifications:', error)
     return false
   }
 }
@@ -440,57 +504,73 @@ export async function disablePushNotifications(
   node?: string
 ): Promise<boolean> {
   try {
-    // Costruisci la stanza IQ per disabilitare push usando XML grezzo
+    // Costruisci la stanza IQ per disabilitare push secondo XEP-0357
     const iqId = `disable-push-${Date.now()}`
     
-    // Costruisci l'XML della stanza secondo XEP-0357
-    const disableXml = `<iq type="set" id="${iqId}">
-  <disable xmlns="${PUSH_NAMESPACE}" jid="${pushJid}"${node ? ` node="${node}"` : ''}/>
-</iq>`
+    console.log('📤 Push Notifications: Invio stanza di disabilitazione al server XMPP...')
+    
+    // Costruisci la stanza IQ nel formato JSON che Stanza.js può gestire
+    // Usiamo il plugin custom che abbiamo registrato per XEP-0357
+    const disableStanza = {
+      id: iqId,
+      type: 'set',
+      // Elemento <disable> secondo XEP-0357 (registrato nel plugin)
+      disablePush: {
+        jid: pushJid,
+        ...(node && { node })
+      }
+    }
 
-    // Invia la stanza XML grezzo e aspetta la risposta
+    // Crea una Promise per aspettare la risposta IQ
     return new Promise<boolean>((resolve) => {
-      // Handler per la risposta IQ
-      const handleIQ = (iq: { id?: string; type?: string }) => {
-        if (iq.id === iqId) {
-          // Rimuovi il listener dopo aver ricevuto la risposta
-          const emitter = client as unknown as { 
-            removeListener: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
-          }
-          emitter.removeListener('iq', handleIQ)
+      let timeoutHandle: NodeJS.Timeout | number
 
+      // Handler per intercettare la risposta IQ
+      const handleIQ = (iq: any) => {
+        if (iq.id === iqId) {
+          clearTimeout(timeoutHandle)
+          client.off('iq', handleIQ)
+          
           if (iq.type === 'result') {
-            console.log('Push Notifications disabilitate con successo')
+            console.log('✅ Push Notifications: Disabilitate con successo!')
             resolve(true)
+          } else if (iq.type === 'error') {
+            console.error('❌ Push Notifications: Errore dal server:', iq.error)
+            
+            // Verifica il tipo di errore
+            if (iq.error?.condition === 'feature-not-implemented' || 
+                iq.error?.condition === 'service-unavailable') {
+              console.warn('⚠️ Push Notifications: Il server non supporta XEP-0357')
+            }
+            
+            resolve(false)
           } else {
-            console.error('Errore nella disabilitazione push notifications:', iq)
+            console.error('⚠️ Push Notifications: Risposta non valida dal server:', iq)
             resolve(false)
           }
         }
       }
 
-      // Registra il listener per la risposta IQ
-      const emitter = client as unknown as { 
-        on: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
-      }
-      emitter.on('iq', handleIQ)
+      // Registra listener per la risposta
+      client.on('iq', handleIQ)
 
-      // Timeout per evitare che la promise rimanga pending per sempre
-      setTimeout(() => {
-        const emitterTimeout = client as unknown as { 
-          removeListener: (name: string, cb: (data: { id?: string; type?: string }) => void) => void 
-        }
-        emitterTimeout.removeListener('iq', handleIQ)
-        console.error('Timeout nella disabilitazione push notifications')
+      // Timeout per evitare che la Promise rimanga pending
+      timeoutHandle = setTimeout(() => {
+        client.off('iq', handleIQ)
+        console.error('⏱️ Push Notifications: Timeout nell\'attesa della risposta dal server')
         resolve(false)
       }, 10000)
 
-      // Invia la stanza XML
-      const sender = client as unknown as { send: (name: string, data: string) => void }
-      sender.send('iq', disableXml)
+      // Invia la stanza usando il metodo send()
+      client.send('iq', disableStanza as any).catch((error) => {
+        clearTimeout(timeoutHandle)
+        client.off('iq', handleIQ)
+        console.error('❌ Push Notifications: Errore nell\'invio della stanza:', error)
+        resolve(false)
+      })
     })
   } catch (error) {
-    console.error('Errore nella disabilitazione push notifications:', error)
+    console.error('❌ Push Notifications: Errore nella disabilitazione push notifications:', error)
     return false
   }
 }

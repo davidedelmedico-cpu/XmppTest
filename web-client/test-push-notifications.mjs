@@ -8,7 +8,7 @@ const __dirname = dirname(__filename);
 
 // Configurazione test
 const TEST_CONFIG = {
-  baseUrl: 'http://localhost:5173',
+  baseUrl: 'http://localhost:4173', // Usa preview server (build produzione)
   timeout: 60000,
   accounts: {
     sender: {
@@ -35,12 +35,12 @@ const log = {
   section: (msg) => console.log(`\n\x1b[1m${'='.repeat(60)}\x1b[0m\n\x1b[1m${msg}\x1b[0m\n\x1b[1m${'='.repeat(60)}\x1b[0m\n`)
 };
 
-// Avvia server di sviluppo
+// Avvia server di preview (build produzione)
 async function startDevServer() {
-  log.info('Avvio server di sviluppo...');
+  log.info('Avvio server preview (build produzione)...');
   
   return new Promise((resolve, reject) => {
-    devServer = spawn('npm', ['run', 'dev'], {
+    devServer = spawn('npm', ['run', 'preview', '--', '--port', '4173'], {
       cwd: __dirname,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -49,9 +49,9 @@ async function startDevServer() {
 
     devServer.stdout.on('data', (data) => {
       const output = data.toString();
-      if (output.includes('Local:') && !serverReady) {
+      if ((output.includes('Local:') || output.includes('localhost:4173')) && !serverReady) {
         serverReady = true;
-        log.success('Server di sviluppo avviato');
+        log.success('Server preview avviato');
         setTimeout(() => resolve(), 2000);
       }
     });
@@ -78,7 +78,7 @@ async function startDevServer() {
 // Ferma server
 function stopDevServer() {
   if (devServer) {
-    log.info('Arresto server di sviluppo...');
+    log.info('Arresto server preview...');
     devServer.kill();
     devServer = null;
   }
@@ -95,10 +95,30 @@ async function login(page, account) {
     log.error(`Errore JavaScript: ${error.message}`);
   });
   
-  // Cattura errori console
+  // Cattura log console (inclusi log push)
   page.on('console', msg => {
-    if (msg.type() === 'error') {
-      log.error(`Console error: ${msg.text()}`);
+    const text = msg.text();
+    const type = msg.type();
+    
+    if (type === 'error') {
+      log.error(`Console error: ${text}`);
+    }
+    
+    // Mostra log relativi a push notifications
+    if (text.includes('🚀') || text.includes('🔍') || text.includes('✅') || 
+        text.includes('❌') || text.includes('⚠️') || text.includes('📤') ||
+        text.includes('Push Notifications') || text.includes('XEP-0357')) {
+      
+      // Determina il tipo di log dall'emoji
+      if (text.includes('✅')) {
+        log.success(`  ${text.replace('✅', '').trim()}`);
+      } else if (text.includes('❌')) {
+        log.error(`  ${text.replace('❌', '').trim()}`);
+      } else if (text.includes('⚠️')) {
+        log.warn(`  ${text.replace('⚠️', '').trim()}`);
+      } else {
+        log.debug(`  ${text}`);
+      }
     }
   });
   
@@ -234,16 +254,6 @@ async function login(page, account) {
 async function checkPushStatus(page, accountName) {
   log.section(`Verifica Push Notifications - ${accountName}`);
   
-  // Cattura tutti i log della console
-  const consoleLogs = [];
-  page.on('console', msg => {
-    const text = msg.text();
-    consoleLogs.push({ type: msg.type(), text });
-    if (text.includes('push') || text.includes('Push') || text.includes('notification')) {
-      log.debug(`[${msg.type()}] ${text}`);
-    }
-  });
-  
   // Esegui JavaScript nella pagina per verificare lo stato
   const pushStatus = await page.evaluate(() => {
     return {
@@ -269,25 +279,39 @@ async function checkPushStatus(page, accountName) {
   
   log.info(`Configurazione push salvata: ${reactPushStatus.hasPushConfig}`);
   if (reactPushStatus.pushConfig) {
-    log.debug(`  JID: ${reactPushStatus.pushConfig.pushJid}`);
-    log.debug(`  Endpoint: ${reactPushStatus.pushConfig.endpoint?.substring(0, 50)}...`);
+    log.success(`  ✓ Push JID: ${reactPushStatus.pushConfig.pushJid}`);
+    log.debug(`  Endpoint: ${reactPushStatus.pushConfig.endpoint?.substring(0, 60)}...`);
+  } else {
+    log.warn(`  ✗ Nessuna configurazione push trovata`);
   }
   
-  // Cerca nei log della console per messaggi relativi a push
-  const pushLogs = consoleLogs.filter(log => 
-    log.text.toLowerCase().includes('push') || 
-    log.text.toLowerCase().includes('notification') ||
-    log.text.toLowerCase().includes('xep-0357')
-  );
+  // Verifica subscription push del browser
+  const subscriptionStatus = await page.evaluate(async () => {
+    if (!navigator.serviceWorker) return { hasSubscription: false };
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      return {
+        hasSubscription: subscription !== null,
+        endpoint: subscription ? subscription.endpoint.substring(0, 60) : null
+      };
+    } catch (e) {
+      return { hasSubscription: false, error: e.message };
+    }
+  });
   
-  if (pushLogs.length > 0) {
-    log.info(`Trovati ${pushLogs.length} log relativi a push:`);
-    pushLogs.forEach(logEntry => {
-      log.debug(`  [${logEntry.type}] ${logEntry.text}`);
-    });
+  if (subscriptionStatus.hasSubscription) {
+    log.success(`  ✓ Browser push subscription attiva`);
+    log.debug(`  Endpoint: ${subscriptionStatus.endpoint}...`);
+  } else {
+    log.warn(`  ✗ Nessuna browser push subscription`);
+    if (subscriptionStatus.error) {
+      log.warn(`  Errore: ${subscriptionStatus.error}`);
+    }
   }
   
-  return { pushStatus, reactPushStatus, pushLogs };
+  return { pushStatus, reactPushStatus, subscriptionStatus };
 }
 
 // Richiedi permesso notifiche
@@ -427,6 +451,10 @@ async function runPushNotificationTest() {
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
     });
     
+    // Concedi permessi notifiche
+    await senderContext.grantPermissions(['notifications']);
+    await receiverContext.grantPermissions(['notifications']);
+    
     const senderPage = await senderContext.newPage();
     const receiverPage = await receiverContext.newPage();
     
@@ -438,21 +466,73 @@ async function runPushNotificationTest() {
     await login(receiverPage, TEST_CONFIG.accounts.receiver);
     
     // Richiedi permesso notifiche sul receiver
+    log.info('Richiesta permesso notifiche...');
     const permission = await requestNotificationPermission(receiverPage);
     if (permission !== 'granted') {
       log.warn(`Permesso notifiche non concesso: ${permission}`);
       log.warn('Le notifiche potrebbero non funzionare');
+    } else {
+      log.success(`Permesso notifiche concesso`);
     }
     
-    // Verifica stato push sul receiver
-    const receiverPushStatus = await checkPushStatus(receiverPage, 'Receiver (testarda)');
+    // Chiudi il popup di debug push se è aperto
+    try {
+      const pushPopupCloseButton = receiverPage.locator('.push-status-close, button:has-text("Chiudi")');
+      if (await pushPopupCloseButton.isVisible({ timeout: 2000 })) {
+        log.info('Chiusura popup debug push notifications...');
+        await pushPopupCloseButton.click();
+        await receiverPage.waitForTimeout(500);
+      }
+    } catch (e) {
+      // Popup non presente, continua
+    }
+    
+    // Verifica stato push sul receiver PRIMA dell'attesa
+    log.info('Stato push subito dopo login...');
+    const receiverPushStatus = await checkPushStatus(receiverPage, 'Receiver (testarda) - Iniziale');
     
     // Attendi che le push si abilitino automaticamente
-    log.info('Attesa abilitazione automatica push notifications...');
-    await receiverPage.waitForTimeout(5000);
+    log.info('');
+    log.info('⏳ Attesa 8 secondi per abilitazione automatica push notifications...');
+    log.info('   (Il sistema tenta di abilitare le push 2 secondi dopo la connessione)');
+    await receiverPage.waitForTimeout(8000);
+    
+    // Chiudi di nuovo il popup se si è riaperto
+    try {
+      const pushPopupCloseButton = receiverPage.locator('.push-status-close, button:has-text("Chiudi")');
+      if (await pushPopupCloseButton.isVisible({ timeout: 1000 })) {
+        await pushPopupCloseButton.click();
+        await receiverPage.waitForTimeout(500);
+      }
+    } catch (e) {
+      // Popup non presente, continua
+    }
     
     // Verifica di nuovo dopo l'attesa
+    log.info('');
     const receiverPushStatusAfter = await checkPushStatus(receiverPage, 'Receiver (testarda) - Dopo attesa');
+    
+    // Confronta stato prima e dopo
+    const pushActivated = !receiverPushStatus.reactPushStatus.hasPushConfig && 
+                         receiverPushStatusAfter.reactPushStatus.hasPushConfig;
+    
+    if (pushActivated) {
+      log.success('');
+      log.success('🎉 PUSH NOTIFICATIONS ATTIVATE CON SUCCESSO!');
+      log.success('');
+    } else if (receiverPushStatusAfter.reactPushStatus.hasPushConfig) {
+      log.success('');
+      log.success('✓ Push notifications già configurate');
+      log.success('');
+    } else {
+      log.error('');
+      log.error('✗ Push notifications NON attivate');
+      log.error('  Possibili cause:');
+      log.error('  - Il server non supporta XEP-0357');
+      log.error('  - Errore nella comunicazione con il server');
+      log.error('  - Service Worker non registrato');
+      log.error('');
+    }
     
     // === SETUP SENDER (testardo) ===
     log.section('Setup Sender (testardo)');
